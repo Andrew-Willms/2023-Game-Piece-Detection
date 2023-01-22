@@ -1,7 +1,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <opencv2/imgproc/imgproc.hpp>
 #include <cmath>
+#include "Colors.h"
+#include "Parameters.h"
+#include "Wrappers.h"
+#include "MultiImageWindow.h"
 
 using namespace cv;
 using namespace std;
@@ -30,7 +33,7 @@ Point ContourCentroid(const vector<Point>& contour) {
 	return Point( moment.m10 / moment.m00, moment.m01 / moment.m00);
 }
 
-Point FindFarthestPoint(const vector<Point>& points, const Point basePoint) {
+Point FarthestPoint(const vector<Point>& points, const Point basePoint) {
 
 	Point farthestPoint = points[0];
 	double farthestDistance = PointDistance(basePoint, points[0]);
@@ -46,6 +49,82 @@ Point FindFarthestPoint(const vector<Point>& points, const Point basePoint) {
 	}
 
 	return farthestPoint;
+}
+
+int FarthestPointIndex(const vector<Point>& points, const Point basePoint) {
+
+	int farthestPointIndex = 0;
+	double farthestDistance = PointDistance(basePoint, points[0]);
+
+	for (int i = 0; i < points.size(); i++) {
+
+		const double currentDistance = PointDistance(basePoint, points[i]);
+
+		if (currentDistance > farthestDistance) {
+			farthestDistance = currentDistance;
+			farthestPointIndex = i;
+		}
+	}
+
+	return farthestPointIndex;
+}
+
+Point FarthestAveragePoint(Mat& image, const vector<Point>& points, const Point basePoint, 
+	const int searchRange = 30, const double distanceTolerance = 0.90, const double maxDistanceFromFarthest = 30) {
+
+	const Point farthestPoint = FarthestPoint(points, basePoint);
+	const int farthestPointIndex = FarthestPointIndex(points, basePoint);
+	const double farthestPointDistance = PointDistance(points[farthestPointIndex], basePoint);
+
+	vector<Point> farPoints = vector<Point>();
+	farPoints.push_back(points[farthestPointIndex]);
+
+	for (int i = 1; i < searchRange; i++) {
+
+		if (farthestPointIndex + i >= points.size()) {
+			continue;
+		}
+
+		if (PointDistance(points[farthestPointIndex + i], basePoint) < farthestPointDistance * distanceTolerance) {
+			continue;
+		}
+
+		if (PointDistance(farthestPoint, points[farthestPointIndex + i]) > maxDistanceFromFarthest) {
+			continue;
+		}
+
+		farPoints.push_back(points[farthestPointIndex + i]);
+	}
+
+
+	for (int i = 1; i < searchRange; i++) {
+
+		if (farthestPointIndex - i < 0) {
+			continue;
+		}
+
+		if (PointDistance(points[farthestPointIndex - i], basePoint) < farthestPointDistance * distanceTolerance) {
+			continue;
+		}
+
+		if (PointDistance(farthestPoint, points[farthestPointIndex - i]) > maxDistanceFromFarthest) {
+			continue;
+		}
+
+		farPoints.push_back(points[farthestPointIndex - i]);
+	}
+
+	int totalX = 0;
+	int totalY = 0;
+
+	for (const Point farPoint : farPoints) {
+		totalX += farPoint.x;
+		totalY += farPoint.y;
+
+		circle(image, farPoint, 1, BLUE);
+	}
+
+	return Point(totalX / farPoints.size(), totalY / farPoints.size());
 }
 
 
@@ -68,7 +147,7 @@ vector<vector<Point>> FilteredContours(const vector<vector<Point>>& contours, co
 
 		const double area = contourArea(contour);
 
-		if (area < minArea && area > maxArea) {
+		if (area < minArea || area > maxArea) {
 			continue;
 		}
 
@@ -100,20 +179,6 @@ const vector<Point>* SmallestContour(const vector<vector<Point>>& contours) {
 	return smallestContour;
 }
 
-
-
-void DrawContour(Mat& image, const vector<Point>& contour, const Scalar& color = Scalar(0, 0, 0), const int thickness = 1) {
-
-	vector<vector<Point>> dummy = vector<vector<Point>>();
-
-	dummy.push_back(contour);
-
-	drawContours(image, dummy, 0, color, thickness);
-}
-
-
-
-
 void FindFilterDrawContours(const Mat& sourceImage, Mat& targetImage, const int minContourArea, const int maxContourArea) {
 
 	vector<vector<Point>> contours;
@@ -123,27 +188,33 @@ void FindFilterDrawContours(const Mat& sourceImage, Mat& targetImage, const int 
 
 	const vector<vector<Point>> filteredContours = FilteredContours(contours, minContourArea, maxContourArea);
 
-	for (int i = 0; i < filteredContours.size(); i++) {
-		//drawContours(targetImage, contours, i, Scalar(255, 0, 255));
-		//DrawContour(targetImage, contours[i], Scalar(255, 0, 255));
-	}
-
 	const vector<Point>* smallestContour = SmallestContour(filteredContours);
 
 	if (smallestContour == nullptr) {
 		return;
 	}
 
-	DrawContour(targetImage, *smallestContour, Scalar(255, 0, 255));
+	DrawContour(targetImage, *smallestContour, MAGENTA);
 
 	const Point centroid = ContourCentroid(*smallestContour);
-	const Point farthestPoint = FindFarthestPoint(*smallestContour, centroid);
+	const Point farthestAveragePoint = FarthestAveragePoint(targetImage, *smallestContour, centroid);
+	const Point farthestPoint = FarthestPoint(*smallestContour, centroid);
 
 	const double angle = LineAngleFromVertical(centroid, farthestPoint);
 
-	putText(targetImage, to_string(angle), centroid, 0, 1.0, Scalar(0, 0, 0));
+	line(targetImage, farthestAveragePoint, centroid, GREEN);
+	line(targetImage, farthestPoint, centroid, RED);
 
-	line(targetImage, farthestPoint, centroid, Scalar(0, 0, 255));
+	putText(targetImage, to_string(angle), centroid, 0, 1.0, BLUE);
+}
+
+
+
+void CeilingToOdd(int& number) {
+
+	if (number % 2 == 0) {
+		number++;
+	}
 }
 
 
@@ -154,92 +225,41 @@ int main() {
 	VideoCapture videoCapture(cameraId);
 	Mat image, mask, imageHsv, imageGray, imageBlur, imageCanny, imageDilated, imageEroded, imageContours;
 
-	int hueMin = 10;
-	int hueMax = 25;
-	int saturationMin = 150;
-	int saturationMax = 255;
-	int valueMin = 75;
-	int valueMax = 255;
-
-	int blurKernelSize = 3;
-	int blurSigmaX = 5;
-	int blurSigmaY = 0;
-
-	int cannyThreshold1 = 50;
-	int cannyThreshold2 = 150;
-
-	int dilationKernelSize = 9;
-	int erosionKernelSize = 1;
-
-	int minContourArea = 10000;
-	int maxContourArea = 75000;
-
 	Scalar lowerColorLimit, upperColorLimit;
 	Mat dilationKernel, erosionKernel;
 
-	namedWindow("Sliders", 100);
-
-	createTrackbar("Hue Min", "Sliders", &hueMin, 179);
-	createTrackbar("Hue Max", "Sliders", &hueMax, 179);
-	createTrackbar("Sat Min", "Sliders", &saturationMin, 255);
-	createTrackbar("Sat Max", "Sliders", &saturationMax, 255);
-	createTrackbar("Value Min", "Sliders", &valueMin, 255);
-	createTrackbar("Value Max", "Sliders", &valueMax, 255);
-
-	createTrackbar("Blur", "Sliders", &blurKernelSize, 30);
-	createTrackbar("Blur SX", "Sliders", &blurSigmaX, 30);
-	createTrackbar("Blur SY", "Sliders", &blurSigmaY, 30);
-
-	createTrackbar("Canny T1", "Sliders", &cannyThreshold1, 250);
-	createTrackbar("Canny T2", "Sliders", &cannyThreshold2, 250);
-
-	createTrackbar("Dilation", "Sliders", &dilationKernelSize, 50);
-	createTrackbar("Erosion", "Sliders", &erosionKernelSize, 50);
-
-	createTrackbar("Min Area", "Sliders", &minContourArea, 100000);
-	createTrackbar("Max Area", "Sliders", &maxContourArea, 100000);
+	Parameters parameters = Parameters();
+	parameters.CreateTrackbars();
 
 	while (true) {
 
-		if (blurKernelSize % 2 == 0) {
-			blurKernelSize++;
-		}
-
-		if (dilationKernelSize % 2 == 0) {
-			dilationKernelSize++;
-		}
-
-		if (erosionKernelSize % 2 == 0) {
-			erosionKernelSize++;
-		}
+		CeilingToOdd(parameters.BlurKernelSize);
+		CeilingToOdd(parameters.DilationKernelSize);
+		CeilingToOdd(parameters.ErosionKernelSize);
 
 		videoCapture.read(image);
+		imageContours = image.clone();
 
-		lowerColorLimit = Scalar(hueMin, saturationMin, valueMin);
-		upperColorLimit = Scalar(hueMax, saturationMax, valueMax);
+		lowerColorLimit = Scalar(parameters.HueMin, parameters.SaturationMin, parameters.ValueMin);
+		upperColorLimit = Scalar(parameters.HueMax, parameters.SaturationMax, parameters.ValueMax);
 		cvtColor(image, imageHsv, COLOR_BGR2HSV);
 		inRange(imageHsv, lowerColorLimit, upperColorLimit, mask);
 
-		GaussianBlur(mask, imageBlur, Size(blurKernelSize, blurKernelSize), blurSigmaX, blurSigmaY);
-		Canny(imageBlur, imageCanny, cannyThreshold1, cannyThreshold2);
+		GaussianBlur(mask, imageBlur, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
+		Canny(imageBlur, imageCanny, parameters.CannyThreshold1, parameters.CannyThreshold2);
+		SquareDilate(imageCanny, imageDilated, parameters.DilationKernelSize);
+		SquareErode(imageDilated, imageEroded, parameters.ErosionKernelSize);
+		FindFilterDrawContours(imageEroded, imageContours, parameters.MinContourArea, parameters.MaxContourArea);
 
-		dilationKernel = getStructuringElement(MORPH_RECT, Size(dilationKernelSize, dilationKernelSize));
-		dilate(imageCanny, imageDilated, dilationKernel);
+		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1800, 900, 3, 2);
 
-		erosionKernel = getStructuringElement(MORPH_RECT, Size(erosionKernelSize, erosionKernelSize));
-		erode(imageDilated, imageEroded, erosionKernel);
-
-		imageContours = image;
-		FindFilterDrawContours(imageEroded, imageContours, minContourArea, maxContourArea);
-
-		//imshow("Normal", image);
-		imshow("Mask", mask);
-		//imshow("Greyscale", imageGray);
-		//imshow("Blur", imageBlur);
-		imshow("Canny", imageCanny);
-		imshow("Dilated", imageDilated);
-		imshow("Eroded", imageEroded);
-		imshow("Contours", imageContours);
+		multiImageWindow.AddImage(mask, 0, 0, "Mask");
+		multiImageWindow.AddImage(imageBlur, 1, 0, "Blur");
+		multiImageWindow.AddImage(imageCanny, 2, 0, "Canny");
+		multiImageWindow.AddImage(imageDilated, 0, 1, "Dilated");
+		multiImageWindow.AddImage(imageEroded, 1, 1, "Eroded");
+		multiImageWindow.AddImage(imageContours, 2, 1, "Contours");
+		multiImageWindow.Show();
 
 		waitKey(1);
 	}
