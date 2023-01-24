@@ -32,5 +32,11 @@
     <ClInclude Include="MultiImageWindow.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Contours.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="Trigonometry.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

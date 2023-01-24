@@ -10,22 +10,25 @@ class Parameters {
 
 	public:
 
-		int HueMin = 10;
-		int HueMax = 25;
-		int SaturationMin = 150;
-		int SaturationMax = 255;
-		int ValueMin = 75;
+		int HueMin = 0;
+		int HueMax = 34;
+		int SaturationMin = 0;
+		int SaturationMax = 124;
+		int ValueMin = 130;
 		int ValueMax = 255;
-		 
-		int BlurKernelSize = 3;
+
+		int MaskErosion = 11;
+		int MaskDilation = 11;
+
+		int BlurKernelSize = 6;
 		int BlurSigmaX = 5;
 		int BlurSigmaY = 0;
 		 
 		int CannyThreshold1 = 50;
 		int CannyThreshold2 = 150;
 		 
-		int DilationKernelSize = 9;
-		int ErosionKernelSize = 1;
+		int ContourDilation = 5;
+		int ContourErosion = 3;
 		 
 		int MinContourArea = 10000;
 		int MaxContourArea = 75000;
@@ -41,6 +44,9 @@ class Parameters {
 			createTrackbar("Value Min", "Sliders", &ValueMin, 255);
 			createTrackbar("Value Max", "Sliders", &ValueMax, 255);
 
+			createTrackbar("M Erosion", "Sliders", &MaskErosion, 50);
+			createTrackbar("M Dilation", "Sliders", &MaskDilation, 50);
+
 			createTrackbar("Blur", "Sliders", &BlurKernelSize, 30);
 			createTrackbar("Blur SX", "Sliders", &BlurSigmaX, 30);
 			createTrackbar("Blur SY", "Sliders", &BlurSigmaY, 30);
@@ -48,8 +54,8 @@ class Parameters {
 			createTrackbar("Canny T1", "Sliders", &CannyThreshold1, 250);
 			createTrackbar("Canny T2", "Sliders", &CannyThreshold2, 250);
 
-			createTrackbar("Dilation", "Sliders", &DilationKernelSize, 50);
-			createTrackbar("Erosion", "Sliders", &ErosionKernelSize, 50);
+			createTrackbar("C Dilation", "Sliders", &ContourDilation, 50);
+			createTrackbar("C Erosion", "Sliders", &ContourErosion, 50);
 
 			createTrackbar("Min Area", "Sliders", &MinContourArea, 100000);
 			createTrackbar("Max Area", "Sliders", &MaxContourArea, 100000);

@@ -11,8 +11,6 @@ using namespace cv;
 
 class MultiImageWindow {
 
-	private:
-
 		string WindowTitle;
 
 		uint TotalImageWidth;

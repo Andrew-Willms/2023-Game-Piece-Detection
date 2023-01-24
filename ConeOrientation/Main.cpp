@@ -1,13 +1,18 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 #include <cmath>
+#include <chrono>
+#include <iostream>
+#include <string>
 #include "Colors.h"
+#include "Contours.h"
 #include "Parameters.h"
 #include "Wrappers.h"
 #include "MultiImageWindow.h"
 
 using namespace cv;
 using namespace std;
+using namespace std::chrono;
 
 
 
@@ -25,12 +30,6 @@ double PointDistance(const Point a, const Point b) {
 
 	// don't use this version cause for some reason it sometimes returns NAN
 	//return sqrt(( (a.x - b.x) * (a.x - b.x)) + ((a.y - b.y) * (a.y - b.x)));
-}
-
-Point ContourCentroid(const vector<Point>& contour) {
-
-	const Moments moment = moments(contour, true);
-	return Point( moment.m10 / moment.m00, moment.m01 / moment.m00);
 }
 
 Point FarthestPoint(const vector<Point>& points, const Point basePoint) {
@@ -70,7 +69,7 @@ int FarthestPointIndex(const vector<Point>& points, const Point basePoint) {
 }
 
 Point FarthestAveragePoint(Mat& image, const vector<Point>& points, const Point basePoint, 
-	const int searchRange = 30, const double distanceTolerance = 0.90, const double maxDistanceFromFarthest = 30) {
+	const int searchRange = 30, const double distanceTolerance = 0.90, const double maxDistanceFromFarthest = 40) {
 
 	const Point farthestPoint = FarthestPoint(points, basePoint);
 	const int farthestPointIndex = FarthestPointIndex(points, basePoint);
@@ -139,46 +138,6 @@ double LineAngleFromVertical(const Point center, const Point endpoint) {
 
 
 
-vector<vector<Point>> FilteredContours(const vector<vector<Point>>& contours, const int minArea, const int maxArea) {
-
-	vector<vector<Point>> filteredContours;
-
-	for (const vector<Point>& contour : contours) {
-
-		const double area = contourArea(contour);
-
-		if (area < minArea || area > maxArea) {
-			continue;
-		}
-
-		filteredContours.push_back(contour);
-	}
-
-	return filteredContours;
-}
-
-const vector<Point>* SmallestContour(const vector<vector<Point>>& contours) {
-
-	if (contours.empty()) {
-		return nullptr;
-	}
-
-	const vector<Point>* smallestContour = contours.data();
-	double smallestArea = contourArea(contours[0]);
-
-	for (const vector<Point>& contour : contours) {
-
-		const double currentArea = contourArea(contour);
-
-		if (currentArea < smallestArea) {
-			smallestArea = currentArea;
-			smallestContour = &contour;
-		}
-	}
-
-	return smallestContour;
-}
-
 void FindFilterDrawContours(const Mat& sourceImage, Mat& targetImage, const int minContourArea, const int maxContourArea) {
 
 	vector<vector<Point>> contours;
@@ -221,9 +180,9 @@ void CeilingToOdd(int& number) {
 
 int main() {
 
-	constexpr int cameraId = 2;
+	constexpr int cameraId = 0;
 	VideoCapture videoCapture(cameraId);
-	Mat image, mask, imageHsv, imageGray, imageBlur, imageCanny, imageDilated, imageEroded, imageContours;
+	Mat image, imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded, contours;
 
 	Scalar lowerColorLimit, upperColorLimit;
 	Mat dilationKernel, erosionKernel;
@@ -233,33 +192,44 @@ int main() {
 
 	while (true) {
 
+		time_point<steady_clock> startTime = high_resolution_clock::now();
+
 		CeilingToOdd(parameters.BlurKernelSize);
-		CeilingToOdd(parameters.DilationKernelSize);
-		CeilingToOdd(parameters.ErosionKernelSize);
-
-		videoCapture.read(image);
-		imageContours = image.clone();
-
+		CeilingToOdd(parameters.ContourDilation);
+		CeilingToOdd(parameters.ContourErosion);
 		lowerColorLimit = Scalar(parameters.HueMin, parameters.SaturationMin, parameters.ValueMin);
 		upperColorLimit = Scalar(parameters.HueMax, parameters.SaturationMax, parameters.ValueMax);
+
+		videoCapture.read(image);
+		contours = image.clone();
+
 		cvtColor(image, imageHsv, COLOR_BGR2HSV);
 		inRange(imageHsv, lowerColorLimit, upperColorLimit, mask);
+		 
+		SquareErode(mask, maskEroded, parameters.MaskErosion);
+		SquareDilate(maskEroded, maskDilated, parameters.MaskDilation);
 
-		GaussianBlur(mask, imageBlur, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
-		Canny(imageBlur, imageCanny, parameters.CannyThreshold1, parameters.CannyThreshold2);
-		SquareDilate(imageCanny, imageDilated, parameters.DilationKernelSize);
-		SquareErode(imageDilated, imageEroded, parameters.ErosionKernelSize);
-		FindFilterDrawContours(imageEroded, imageContours, parameters.MinContourArea, parameters.MaxContourArea);
+		GaussianBlur(maskDilated, blurred, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
+		Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
+		SquareDilate(edges, contoursDilated, parameters.ContourDilation);
+		SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
+		FindFilterDrawContours(contoursEroded, contours, parameters.MinContourArea, parameters.MaxContourArea);
 
-		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1800, 900, 3, 2);
+		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
 
 		multiImageWindow.AddImage(mask, 0, 0, "Mask");
-		multiImageWindow.AddImage(imageBlur, 1, 0, "Blur");
-		multiImageWindow.AddImage(imageCanny, 2, 0, "Canny");
-		multiImageWindow.AddImage(imageDilated, 0, 1, "Dilated");
-		multiImageWindow.AddImage(imageEroded, 1, 1, "Eroded");
-		multiImageWindow.AddImage(imageContours, 2, 1, "Contours");
+		multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
+		multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
+		multiImageWindow.AddImage(blurred, 3, 0, "Blur");
+		multiImageWindow.AddImage(edges, 0, 1, "Canny");
+		multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
+		multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
+		multiImageWindow.AddImage(contours, 3, 1, "Contours");
 		multiImageWindow.Show();
+
+		time_point<steady_clock> endTime = high_resolution_clock::now();
+		duration<double, milli> duration = endTime - startTime;
+		cout << duration.count() << endl;
 
 		waitKey(1);
 	}
