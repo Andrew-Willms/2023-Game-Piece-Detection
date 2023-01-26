@@ -53,10 +53,11 @@ inline Point2d CalculateObjectDisplacement(
 	const Point2d cameraAngle) {
 
 	const Point2d inCameraAngleToObject = AngleFromCameraCenter(cameraCoordinate, cameraResolution, cameraFov);
-	const Point2d angleFromCameraToObject = cameraAngle + inCameraAngleToObject;
+	const double yawFromRobotToObject = cameraAngle.x + inCameraAngleToObject.x;
 
-	const double yFromCameraToObject = cameraOffset.z / tan(abs(angleFromCameraToObject.y));
-	const double xFromCameraToObject = yFromCameraToObject * tan(angleFromCameraToObject.x);
+	const double distanceFromCameraToObject = cameraOffset.z / tan(inCameraAngleToObject.y + cameraAngle.y);
+	const double yFromCameraToObject = distanceFromCameraToObject * cos(cameraAngle.x);
+	const double xFromCameraToObject = yFromCameraToObject * tan(yawFromRobotToObject);
 
 	const Point2d displacementFromRobotCenter = Point2d(xFromCameraToObject + cameraOffset.x, yFromCameraToObject + cameraOffset.y);
 	return displacementFromRobotCenter;
@@ -98,11 +99,8 @@ inline double CalculateConeAngle(const Point2d coneCentroid, const Point2d coneT
 
 	const Point2d coneTipOffset = Point2d(coneTipOffsetX, coneTip.y - coneCentroid.y);
 
-	//const double angle = atan2(coneTipOffset.y, coneTipOffset.x);
+	// X and Y are deliberately in the opposite named parameter
 	const double angle = atan2(coneTipOffset.x, coneTipOffset.y);
 
-	//const double angleWithZeroStraightAhead = angle - PI / 2;
-
-	//return angleWithZeroStraightAhead;
 	return angle;
 }
