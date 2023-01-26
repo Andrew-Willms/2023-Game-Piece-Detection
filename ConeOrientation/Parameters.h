@@ -14,7 +14,7 @@ class Parameters {
 		int HueMax = 29;
 		int SaturationMin = 164;
 		int SaturationMax = 255;
-		int ValueMin = 60;
+		int ValueMin = 40;
 		int ValueMax = 175;
 
 		int MaskErosion = 11;

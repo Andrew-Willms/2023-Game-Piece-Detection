@@ -231,15 +231,15 @@ int main() {
 
 		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
 
-		//multiImageWindow.AddImage(mask, 0, 0, "Mask");
-		//multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
-		//multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
-		//multiImageWindow.AddImage(blurred, 3, 0, "Blur");
-		//multiImageWindow.AddImage(edges, 0, 1, "Canny");
-		//multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
-		//multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
-		//multiImageWindow.AddImage(contours, 3, 1, "Contours");
-		//multiImageWindow.Show();
+		multiImageWindow.AddImage(mask, 0, 0, "Mask");
+		multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
+		multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
+		multiImageWindow.AddImage(blurred, 3, 0, "Blur");
+		multiImageWindow.AddImage(edges, 0, 1, "Canny");
+		multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
+		multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
+		multiImageWindow.AddImage(contours, 3, 1, "Contours");
+		multiImageWindow.Show();
 
 		time_point<steady_clock> endTime = high_resolution_clock::now();
 		duration<double, milli> duration = endTime - startTime;
