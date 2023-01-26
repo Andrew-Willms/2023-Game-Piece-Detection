@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#define _USE_MATH_DEFINES
+#define PI 3.14159
 
 #include <opencv2/core/types.hpp>
 
@@ -13,7 +13,7 @@ using namespace cv;
  * \brief Calculates the real world angle between a specified point in an image and the center axis of the camera.
  * \param cameraCoordinate The in camera coordinate of the point to locate. The coordinate (0, 0) would be the top left corner of the image.
  * \param cameraResolution A point with the X and Y members representing the horizontal and vertical resolution of the camera, respectively.
- * \param cameraFov A point with the X and Y members representing the horizontal and vertical FOV of the camera, respectively.
+ * \param cameraFov A point with the X and Y members representing the horizontal and vertical FOV of the camera, respectively in radians.
  * \return A point with the X and Y members representing the yaw and pitch, respectively of the specified point from the the center axis of the camera.
  *  Positive yaw is produced by points in the right half of the image. Positive pitch is produced by points in the upper half of the image.
  */
@@ -37,7 +37,7 @@ inline Point2d AngleFromCameraCenter(const Point2i cameraCoordinate, const Point
  * \brief Calculates the displacement between an object in camera and the center of the robot.
  * \param cameraCoordinate The in camera coordinate of the object. The coordinate (0, 0) would be the top left corner of the image.
  * \param cameraResolution A point with the X and Y members representing the horizontal and vertical resolution of the camera, respectively.
- * \param cameraFov A point with the X and Y members representing the horizontal and vertical FOV of the camera, respectively.
+ * \param cameraFov A point with the X and Y members representing the horizontal and vertical FOV of the camera, respectively in radians.
  * \param cameraOffset A point with the X, Y, and Z members representing the horizontal distance from the camera to the robot center, the forwards/
  *  backwards distance from the camera to the robot center, and the vertical distance from the camera to the ground, respectively. X is positive if the
  *  camera is to the right of the center. Y is positive if the camera is in front of the robot center. Z is positive if the camera is above the ground.
@@ -55,7 +55,7 @@ inline Point2d CalculateObjectDisplacement(
 	const Point2d inCameraAngleToObject = AngleFromCameraCenter(cameraCoordinate, cameraResolution, cameraFov);
 	const Point2d angleFromCameraToObject = cameraAngle + inCameraAngleToObject;
 
-	const double yFromCameraToObject = cameraOffset.z / tan(angleFromCameraToObject.y);
+	const double yFromCameraToObject = cameraOffset.z / tan(abs(angleFromCameraToObject.y));
 	const double xFromCameraToObject = yFromCameraToObject * tan(angleFromCameraToObject.x);
 
 	const Point2d displacementFromRobotCenter = Point2d(xFromCameraToObject + cameraOffset.x, yFromCameraToObject + cameraOffset.y);
@@ -98,9 +98,11 @@ inline double CalculateConeAngle(const Point2d coneCentroid, const Point2d coneT
 
 	const Point2d coneTipOffset = Point2d(coneTipOffsetX, coneTip.y - coneCentroid.y);
 
-	const double angle = atan2(coneTipOffset.y, coneTipOffset.x);
+	//const double angle = atan2(coneTipOffset.y, coneTipOffset.x);
+	const double angle = atan2(coneTipOffset.x, coneTipOffset.y);
 
-	const double angleWithZeroStraightAhead = angle - M_PI / 2;
+	//const double angleWithZeroStraightAhead = angle - PI / 2;
 
-	return angleWithZeroStraightAhead;
+	//return angleWithZeroStraightAhead;
+	return angle;
 }

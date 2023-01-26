@@ -10,12 +10,12 @@ class Parameters {
 
 	public:
 
-		int HueMin = 0;
-		int HueMax = 34;
-		int SaturationMin = 0;
-		int SaturationMax = 124;
-		int ValueMin = 130;
-		int ValueMax = 255;
+		int HueMin = 2;
+		int HueMax = 29;
+		int SaturationMin = 164;
+		int SaturationMax = 255;
+		int ValueMin = 60;
+		int ValueMax = 175;
 
 		int MaskErosion = 11;
 		int MaskDilation = 11;
@@ -30,7 +30,7 @@ class Parameters {
 		int ContourDilation = 5;
 		int ContourErosion = 3;
 		 
-		int MinContourArea = 10000;
+		int MinContourArea = 5000;
 		int MaxContourArea = 75000;
 
 		void CreateTrackbars() {

@@ -99,7 +99,7 @@ class MultiImageWindow {
 
 		void PrintSubtitle(const uint column, const uint row, const string& subtitle) {
 
-			putText(WholeImage, subtitle, Point(GetSubImageStartX(column), GetSubImageStartY(row) + 25), 0, 1.0, MAGENTA);
+			putText(WholeImage, subtitle, Point(GetSubImageStartX(column), GetSubImageStartY(row) + 18), 0, 0.75, MAGENTA);
 		}
 
 	public:

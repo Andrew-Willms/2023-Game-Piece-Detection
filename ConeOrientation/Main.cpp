@@ -9,6 +9,7 @@
 #include "Parameters.h"
 #include "Wrappers.h"
 #include "MultiImageWindow.h"
+#include "Trigonometry.h"
 
 using namespace cv;
 using namespace std;
@@ -156,15 +157,25 @@ void FindFilterDrawContours(const Mat& sourceImage, Mat& targetImage, const int 
 	DrawContour(targetImage, *smallestContour, MAGENTA);
 
 	const Point centroid = ContourCentroid(*smallestContour);
-	const Point farthestAveragePoint = FarthestAveragePoint(targetImage, *smallestContour, centroid);
+	//const Point farthestAveragePoint = FarthestAveragePoint(targetImage, *smallestContour, centroid);
 	const Point farthestPoint = FarthestPoint(*smallestContour, centroid);
 
-	const double angle = LineAngleFromVertical(centroid, farthestPoint);
-
-	line(targetImage, farthestAveragePoint, centroid, GREEN);
+	//line(targetImage, farthestAveragePoint, centroid, GREEN);
 	line(targetImage, farthestPoint, centroid, RED);
 
-	putText(targetImage, to_string(angle), centroid, 0, 1.0, BLUE);
+	const Point2i cameraResolution = Point2i(640, 480);
+	const Point2d cameraFov = Point2d(53.0l / 180.0l * PI, 38.0l / 180.0l * PI);
+	const Point3d cameraOffset = Point3d(-30, 20, 80);
+	const Point2d cameraAngle = Point2d(30.0l / 180.0l * PI, -60.0l / 180.01 * PI);
+
+	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, cameraResolution, cameraFov, cameraOffset, cameraAngle);
+	const Point2d tipPosition = CalculateObjectDisplacement(farthestPoint, cameraResolution, cameraFov, cameraOffset, cameraAngle);
+	const Point2d midPointPosition = CalculateConeMidpoint(centroidPosition, tipPosition);
+	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
+
+	const string text = "X:" + to_string(midPointPosition.x) + ", Y:" + to_string(midPointPosition.y) + " A:" + to_string(coneAngle * 180 / PI);
+
+	putText(targetImage, text, Point2i(20, 45), 0, 0.75, BLUE);
 }
 
 
@@ -180,7 +191,7 @@ void CeilingToOdd(int& number) {
 
 int main() {
 
-	constexpr int cameraId = 0;
+	constexpr int cameraId = 2;
 	VideoCapture videoCapture(cameraId);
 	Mat image, imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded, contours;
 
@@ -213,23 +224,26 @@ int main() {
 		Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
 		SquareDilate(edges, contoursDilated, parameters.ContourDilation);
 		SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
+
+		//time_point<steady_clock> startTime = high_resolution_clock::now();
+
 		FindFilterDrawContours(contoursEroded, contours, parameters.MinContourArea, parameters.MaxContourArea);
 
 		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
 
-		multiImageWindow.AddImage(mask, 0, 0, "Mask");
-		multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
-		multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
-		multiImageWindow.AddImage(blurred, 3, 0, "Blur");
-		multiImageWindow.AddImage(edges, 0, 1, "Canny");
-		multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
-		multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
-		multiImageWindow.AddImage(contours, 3, 1, "Contours");
-		multiImageWindow.Show();
+		//multiImageWindow.AddImage(mask, 0, 0, "Mask");
+		//multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
+		//multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
+		//multiImageWindow.AddImage(blurred, 3, 0, "Blur");
+		//multiImageWindow.AddImage(edges, 0, 1, "Canny");
+		//multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
+		//multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
+		//multiImageWindow.AddImage(contours, 3, 1, "Contours");
+		//multiImageWindow.Show();
 
 		time_point<steady_clock> endTime = high_resolution_clock::now();
 		duration<double, milli> duration = endTime - startTime;
-		cout << duration.count() << endl;
+		//cout << duration.count() << endl;
 
 		waitKey(1);
 	}
