@@ -38,7 +38,7 @@ class Parameters {
 		const Point2i CameraResolution = Point2i(640, 480) + Point2i(2, 2); // plus 2 to each for the borders
 		const Point2d CameraFov = Point2d(48.5l / 180.0l * PI, 36.0l / 180.0l * PI);
 		
-		Point3d CameraOffset = Point3d(0, 0, 33);
+		Point3d CameraOffset = Point3d(0, -20, 50);
 		Point2d CameraAngle = Point2d(0.0l / 180.0l * PI, -60.0l / 180.01 * PI);
 
 		void CreateTrackbars() {

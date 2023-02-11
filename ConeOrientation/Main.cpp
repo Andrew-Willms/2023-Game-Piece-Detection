@@ -136,20 +136,23 @@ int main() {
 	MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
 
 	Parameters parameters = Parameters();
-	parameters.CreateTrackbars();
+	if (SHOW_UI) {
+		parameters.CreateTrackbars();
+	}
 
 	while (true) {
 
-		ConeDetails* coneDetails{};
-		time_point<steady_clock> startTime = high_resolution_clock::now();
+		ConeDetails coneDetails{};
 		videoCapture.read(image);
+
+		time_point<steady_clock> startTime = high_resolution_clock::now();
 
 		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
-		ComputeConeDetails(coneContour, parameters, coneDetails);
+		ComputeConeDetails(coneContour, parameters, &coneDetails);
 
 		if (SHOW_UI) {
-			DrawConeDetails(image, coneContour, *coneDetails, multiImageWindow);
+			DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
 			multiImageWindow.Show();
 		}
 

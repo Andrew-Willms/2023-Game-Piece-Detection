@@ -17,6 +17,14 @@ class ConeDetails {
 
 	public:
 
+		ConeDetails() {
+			CentroidPosition = Point2d();
+			TipPosition = Point2d();
+			CentroidCameraPosition = Point2i();
+			TipCameraPosition = Point2i();
+			Angle = 0;
+		}
+		
 		ConeDetails(const Point2d centroidPosition, const Point2d tipPosition, const Point2i centroidCameraPosition,
 			const Point2i tipCameraPosition, const double angle) {
 
