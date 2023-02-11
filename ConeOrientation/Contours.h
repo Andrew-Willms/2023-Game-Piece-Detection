@@ -10,24 +10,23 @@ using namespace cv;
 
 inline void DrawContour(Mat& image, const vector<Point>& contour, const Scalar& color = Scalar(0, 0, 0), const int thickness = 1) {
 
-	vector<vector<Point>> dummy = vector<vector<Point>>();
+	vector<vector<Point2i>> singleContour = vector<vector<Point2i>>();
+	singleContour.push_back(contour);
 
-	dummy.push_back(contour);
-
-	drawContours(image, dummy, 0, color, thickness);
+	drawContours(image, singleContour, 0, color, thickness);
 }
 
-inline Point ContourCentroid(const vector<Point>& contour) {
+inline Point2i ContourCentroid(const vector<Point2i>& contour) {
 
 	const Moments moment = moments(contour, true);
-	return Point(moment.m10 / moment.m00, moment.m01 / moment.m00);
+	return Point2i(moment.m10 / moment.m00, moment.m01 / moment.m00);
 }
 
-inline vector<vector<Point>> FilteredContours(const vector<vector<Point>>& contours, const int minArea, const int maxArea) {
+inline vector<vector<Point2i>> FilteredContours(const vector<vector<Point2i>>& contours, const int minArea, const int maxArea) {
 
-	vector<vector<Point>> filteredContours;
+	vector<vector<Point2i>> filteredContours;
 
-	for (const vector<Point>& contour : contours) {
+	for (const vector<Point2i>& contour : contours) {
 
 		const double area = contourArea(contour);
 
@@ -41,16 +40,16 @@ inline vector<vector<Point>> FilteredContours(const vector<vector<Point>>& conto
 	return filteredContours;
 }
 
-inline const vector<Point>* SmallestContour(const vector<vector<Point>>& contours) {
+inline const vector<Point2i>* SmallestContour(const vector<vector<Point2i>>& contours) {
 
 	if (contours.empty()) {
 		return nullptr;
 	}
 
-	const vector<Point>* smallestContour = contours.data();
+	const vector<Point2i>* smallestContour = contours.data();
 	double smallestArea = contourArea(contours[0]);
 
-	for (const vector<Point>& contour : contours) {
+	for (const vector<Point2i>& contour : contours) {
 
 		const double currentArea = contourArea(contour);
 
@@ -61,4 +60,26 @@ inline const vector<Point>* SmallestContour(const vector<vector<Point>>& contour
 	}
 
 	return smallestContour;
+}
+
+inline const vector<Point2i>* BiggestContour(const vector<vector<Point2i>>& contours) {
+
+	if (contours.empty()) {
+		return nullptr;
+	}
+
+	const vector<Point2i>* biggestContour = contours.data();
+	double biggestArea = contourArea(contours[0]);
+
+	for (const vector<Point2i>& contour : contours) {
+
+		const double currentArea = contourArea(contour);
+
+		if (currentArea > biggestArea) {
+			biggestArea = currentArea;
+			biggestContour = &contour;
+		}
+	}
+
+	return biggestContour;
 }

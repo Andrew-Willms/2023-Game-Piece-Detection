@@ -5,178 +5,20 @@
 #include <iostream>
 #include <string>
 #include "Colors.h"
+#include "ConeDetails.h"
 #include "Contours.h"
 #include "Parameters.h"
 #include "Wrappers.h"
 #include "MultiImageWindow.h"
 #include "Trigonometry.h"
+#include "Points.h"
 
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
 
-
-
-double PointDistance(const Point a, const Point b) {
-
-	const int deltaX = a.x - b.x;
-	const int deltaY = a.y - b.y;
-
-	const int deltaXSquared = deltaX * deltaX;
-	const int deltaYSquared = deltaY * deltaY;
-
-	const double squareRoot = sqrt(deltaXSquared + deltaYSquared);
-
-	return squareRoot;
-
-	// don't use this version cause for some reason it sometimes returns NAN
-	//return sqrt(( (a.x - b.x) * (a.x - b.x)) + ((a.y - b.y) * (a.y - b.x)));
-}
-
-Point FarthestPoint(const vector<Point>& points, const Point basePoint) {
-
-	Point farthestPoint = points[0];
-	double farthestDistance = PointDistance(basePoint, points[0]);
-
-	for (const Point point : points) {
-
-		const double currentDistance = PointDistance(basePoint, point);
-
-		if (currentDistance > farthestDistance) {
-			farthestDistance = currentDistance;
-			farthestPoint = point;
-		}
-	}
-
-	return farthestPoint;
-}
-
-int FarthestPointIndex(const vector<Point>& points, const Point basePoint) {
-
-	int farthestPointIndex = 0;
-	double farthestDistance = PointDistance(basePoint, points[0]);
-
-	for (int i = 0; i < points.size(); i++) {
-
-		const double currentDistance = PointDistance(basePoint, points[i]);
-
-		if (currentDistance > farthestDistance) {
-			farthestDistance = currentDistance;
-			farthestPointIndex = i;
-		}
-	}
-
-	return farthestPointIndex;
-}
-
-Point FarthestAveragePoint(Mat& image, const vector<Point>& points, const Point basePoint, 
-	const int searchRange = 30, const double distanceTolerance = 0.90, const double maxDistanceFromFarthest = 40) {
-
-	const Point farthestPoint = FarthestPoint(points, basePoint);
-	const int farthestPointIndex = FarthestPointIndex(points, basePoint);
-	const double farthestPointDistance = PointDistance(points[farthestPointIndex], basePoint);
-
-	vector<Point> farPoints = vector<Point>();
-	farPoints.push_back(points[farthestPointIndex]);
-
-	for (int i = 1; i < searchRange; i++) {
-
-		if (farthestPointIndex + i >= points.size()) {
-			continue;
-		}
-
-		if (PointDistance(points[farthestPointIndex + i], basePoint) < farthestPointDistance * distanceTolerance) {
-			continue;
-		}
-
-		if (PointDistance(farthestPoint, points[farthestPointIndex + i]) > maxDistanceFromFarthest) {
-			continue;
-		}
-
-		farPoints.push_back(points[farthestPointIndex + i]);
-	}
-
-
-	for (int i = 1; i < searchRange; i++) {
-
-		if (farthestPointIndex - i < 0) {
-			continue;
-		}
-
-		if (PointDistance(points[farthestPointIndex - i], basePoint) < farthestPointDistance * distanceTolerance) {
-			continue;
-		}
-
-		if (PointDistance(farthestPoint, points[farthestPointIndex - i]) > maxDistanceFromFarthest) {
-			continue;
-		}
-
-		farPoints.push_back(points[farthestPointIndex - i]);
-	}
-
-	int totalX = 0;
-	int totalY = 0;
-
-	for (const Point farPoint : farPoints) {
-		totalX += farPoint.x;
-		totalY += farPoint.y;
-
-		circle(image, farPoint, 1, BLUE);
-	}
-
-	return Point(totalX / farPoints.size(), totalY / farPoints.size());
-}
-
-
-
-double LineAngleFromVertical(const Point center, const Point endpoint) {
-
-	const int deltaX = center.x - endpoint.x;
-	const int deltaY = center.y - endpoint.y;
-
-	return atan2(deltaY, deltaX);
-}
-
-
-
-void FindFilterDrawContours(const Mat& sourceImage, Mat& targetImage, const int minContourArea, const int maxContourArea) {
-
-	vector<vector<Point>> contours;
-	vector<Vec4i> hierarchy;
-
-	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE);
-
-	const vector<vector<Point>> filteredContours = FilteredContours(contours, minContourArea, maxContourArea);
-
-	const vector<Point>* smallestContour = SmallestContour(filteredContours);
-
-	if (smallestContour == nullptr) {
-		return;
-	}
-
-	DrawContour(targetImage, *smallestContour, MAGENTA);
-
-	const Point centroid = ContourCentroid(*smallestContour);
-	//const Point farthestAveragePoint = FarthestAveragePoint(targetImage, *smallestContour, centroid);
-	const Point farthestPoint = FarthestPoint(*smallestContour, centroid);
-
-	//line(targetImage, farthestAveragePoint, centroid, GREEN);
-	line(targetImage, farthestPoint, centroid, RED);
-
-	const Point2i cameraResolution = Point2i(640, 480);
-	const Point2d cameraFov = Point2d(53.0l / 180.0l * PI, 38.0l / 180.0l * PI);
-	const Point3d cameraOffset = Point3d(-30, 20, 80);
-	const Point2d cameraAngle = Point2d(30.0l / 180.0l * PI, -60.0l / 180.01 * PI);
-
-	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, cameraResolution, cameraFov, cameraOffset, cameraAngle);
-	const Point2d tipPosition = CalculateObjectDisplacement(farthestPoint, cameraResolution, cameraFov, cameraOffset, cameraAngle);
-	const Point2d midPointPosition = CalculateConeMidpoint(centroidPosition, tipPosition);
-	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
-
-	const string text = "X:" + to_string(midPointPosition.x) + ", Y:" + to_string(midPointPosition.y) + " A:" + to_string(coneAngle * 180 / PI);
-
-	putText(targetImage, text, Point2i(20, 45), 0, 0.75, BLUE);
-}
+constexpr bool SHOW_UI = true;
+constexpr bool PRINT_TIME = true;
 
 
 
@@ -189,61 +31,133 @@ void CeilingToOdd(int& number) {
 
 
 
+void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow guiWindow) {
+
+	Mat imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded;
+
+	CeilingToOdd(parameters.BlurKernelSize);
+	CeilingToOdd(parameters.ContourDilation);
+	CeilingToOdd(parameters.ContourErosion);
+
+	Scalar lowerColorLimit = Scalar(parameters.HueMin, parameters.SaturationMin, parameters.ValueMin);
+	Scalar upperColorLimit = Scalar(parameters.HueMax, parameters.SaturationMax, parameters.ValueMax);
+
+	cvtColor(sourceImage, imageHsv, COLOR_BGR2HSV);
+	inRange(imageHsv, lowerColorLimit, upperColorLimit, mask);
+
+	SquareErode(mask, maskEroded, parameters.MaskErosion);
+	SquareDilate(maskEroded, maskDilated, parameters.MaskDilation);
+
+	GaussianBlur(maskDilated, blurred, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
+	Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
+	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
+	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
+
+	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, WHITE);
+
+	if (!SHOW_UI) {
+		return;
+	}
+
+	guiWindow.AddImage(mask, 0, 0, "Mask");
+	guiWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
+	guiWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
+	guiWindow.AddImage(blurred, 3, 0, "Blur");
+	guiWindow.AddImage(edges, 0, 1, "Canny");
+	guiWindow.AddImage(contoursDilated, 1, 1, "Dilated");
+	guiWindow.AddImage(targetImage, 2, 1, "Eroded, Bordered");
+}
+
+vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters parameters) {
+
+	vector<vector<Point2i>> contours;
+	vector<Vec4i> hierarchy;
+
+	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE);
+
+	const vector<vector<Point2i>> filteredContours = FilteredContours(contours, parameters.MinContourArea, parameters.MaxContourArea);
+
+	if (filteredContours.empty()) {
+		return vector<Point2i>();
+	}
+
+	return *BiggestContour(filteredContours);
+}
+
+void ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
+
+	if (coneContour.empty()) {
+		output = nullptr;
+		return;
+	}
+
+	const Point2i centroid = ContourCentroid(coneContour);
+	const Point2i farthestPoint = FarthestPoint(coneContour, centroid);
+
+	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, parameters.CameraResolution, 
+		parameters.CameraFov, parameters.CameraOffset, parameters.CameraAngle);
+
+	const Point2d tipPosition = CalculateObjectDisplacement(farthestPoint, parameters.CameraResolution, 
+		parameters.CameraFov, parameters.CameraOffset, parameters.CameraAngle);
+
+	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
+
+	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, coneAngle);
+}
+
+void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const ConeDetails& coneDetails, MultiImageWindow& guiWindow) {
+
+	if (coneContour.empty()) {
+		guiWindow.AddImage(targetImage, 3, 1, "Contours");
+		return;
+	}
+
+	DrawContour(targetImage, coneContour, MAGENTA);
+
+	line(targetImage, coneDetails.GetTipCameraPosition(), coneDetails.GetCentroidCameraPosition(), RED);
+
+	const string text = "X:" + to_string(coneDetails.GetCentroidPosition().x) + 
+						", Y:" + to_string(coneDetails.GetCentroidPosition().y) +
+						", A:" + to_string(coneDetails.GetAngle() * 180 / PI);
+
+	putText(targetImage, text, Point2i(20, 45), 0, 0.75, GREEN);
+
+	guiWindow.AddImage(targetImage, 3, 1, "Contours");
+}
+
+
+
 int main() {
 
-	constexpr int cameraId = 2;
+	constexpr int cameraId = 0;
 	VideoCapture videoCapture(cameraId);
-	Mat image, imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded, contours;
+	Mat image, preProcessedImage;
 
-	Scalar lowerColorLimit, upperColorLimit;
-	Mat dilationKernel, erosionKernel;
+	MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
 
 	Parameters parameters = Parameters();
 	parameters.CreateTrackbars();
 
 	while (true) {
 
+		ConeDetails* coneDetails{};
 		time_point<steady_clock> startTime = high_resolution_clock::now();
-
-		CeilingToOdd(parameters.BlurKernelSize);
-		CeilingToOdd(parameters.ContourDilation);
-		CeilingToOdd(parameters.ContourErosion);
-		lowerColorLimit = Scalar(parameters.HueMin, parameters.SaturationMin, parameters.ValueMin);
-		upperColorLimit = Scalar(parameters.HueMax, parameters.SaturationMax, parameters.ValueMax);
-
 		videoCapture.read(image);
-		contours = image.clone();
 
-		cvtColor(image, imageHsv, COLOR_BGR2HSV);
-		inRange(imageHsv, lowerColorLimit, upperColorLimit, mask);
-		 
-		SquareErode(mask, maskEroded, parameters.MaskErosion);
-		SquareDilate(maskEroded, maskDilated, parameters.MaskDilation);
+		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
+		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
+		ComputeConeDetails(coneContour, parameters, coneDetails);
 
-		GaussianBlur(maskDilated, blurred, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
-		Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
-		SquareDilate(edges, contoursDilated, parameters.ContourDilation);
-		SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
+		if (SHOW_UI) {
+			DrawConeDetails(image, coneContour, *coneDetails, multiImageWindow);
+			multiImageWindow.Show();
+		}
 
-		//time_point<steady_clock> startTime = high_resolution_clock::now();
-
-		FindFilterDrawContours(contoursEroded, contours, parameters.MinContourArea, parameters.MaxContourArea);
-
-		MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
-
-		multiImageWindow.AddImage(mask, 0, 0, "Mask");
-		multiImageWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
-		multiImageWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
-		multiImageWindow.AddImage(blurred, 3, 0, "Blur");
-		multiImageWindow.AddImage(edges, 0, 1, "Canny");
-		multiImageWindow.AddImage(contoursDilated, 1, 1, "Dilated");
-		multiImageWindow.AddImage(contoursEroded, 2, 1, "Eroded");
-		multiImageWindow.AddImage(contours, 3, 1, "Contours");
-		multiImageWindow.Show();
-
-		time_point<steady_clock> endTime = high_resolution_clock::now();
-		duration<double, milli> duration = endTime - startTime;
-		//cout << duration.count() << endl;
+		if (PRINT_TIME) {
+			time_point<steady_clock> endTime = high_resolution_clock::now();
+			duration<double, milli> duration = endTime - startTime;
+			cout << duration.count() << endl;
+		}
 
 		waitKey(1);
 	}

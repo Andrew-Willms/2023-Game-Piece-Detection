@@ -55,9 +55,13 @@ inline Point2d CalculateObjectDisplacement(
 	const Point2d inCameraAngleToObject = AngleFromCameraCenter(cameraCoordinate, cameraResolution, cameraFov);
 	const double yawFromRobotToObject = cameraAngle.x + inCameraAngleToObject.x;
 
-	const double distanceFromCameraToObject = cameraOffset.z / tan(abs(inCameraAngleToObject.y + cameraAngle.y));
-	const double yFromCameraToObject = distanceFromCameraToObject * cos(cameraAngle.x);
-	const double xFromCameraToObject = yFromCameraToObject * tan(yawFromRobotToObject);
+	const double yFromCameraToObject = cameraOffset.z / tan(abs(inCameraAngleToObject.y + cameraAngle.y));
+	const double hypotenuseOnYzPlaneToObject = sqrt(cameraOffset.z*cameraOffset.z + yFromCameraToObject*yFromCameraToObject);
+	const double xFromCameraToObject = hypotenuseOnYzPlaneToObject * tan(yawFromRobotToObject);
+
+	//double distanceFromCameraToObject = cameraOffset.z / tan(abs(inCameraAngleToObject.y + cameraAngle.y));
+	//const double yFromCameraToObject = distanceFromCameraToObject * cos(yawFromRobotToObject);
+	//const double xFromCameraToObject = distanceFromCameraToObject * sin(yawFromRobotToObject);
 
 	const Point2d displacementFromRobotCenter = Point2d(xFromCameraToObject + cameraOffset.x, yFromCameraToObject + cameraOffset.y);
 	return displacementFromRobotCenter;

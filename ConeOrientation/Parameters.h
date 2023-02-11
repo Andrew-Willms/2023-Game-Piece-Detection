@@ -2,6 +2,8 @@
 
 #include <opencv2/highgui.hpp>
 
+#include "Trigonometry.h"
+
 using namespace cv;
 
 
@@ -15,7 +17,7 @@ class Parameters {
 		int SaturationMin = 164;
 		int SaturationMax = 255;
 		int ValueMin = 40;
-		int ValueMax = 175;
+		int ValueMax = 255;
 
 		int MaskErosion = 11;
 		int MaskDilation = 11;
@@ -32,6 +34,12 @@ class Parameters {
 		 
 		int MinContourArea = 5000;
 		int MaxContourArea = 75000;
+
+		const Point2i CameraResolution = Point2i(640, 480) + Point2i(2, 2); // plus 2 to each for the borders
+		const Point2d CameraFov = Point2d(48.5l / 180.0l * PI, 36.0l / 180.0l * PI);
+		
+		Point3d CameraOffset = Point3d(0, 0, 33);
+		Point2d CameraAngle = Point2d(0.0l / 180.0l * PI, -60.0l / 180.01 * PI);
 
 		void CreateTrackbars() {
 
@@ -59,7 +67,6 @@ class Parameters {
 
 			createTrackbar("Min Area", "Sliders", &MinContourArea, 100000);
 			createTrackbar("Max Area", "Sliders", &MaxContourArea, 100000);
-
 		}
 
 };

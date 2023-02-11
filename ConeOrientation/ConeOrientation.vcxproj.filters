@@ -38,5 +38,11 @@
     <ClInclude Include="Trigonometry.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="Points.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
+    <ClInclude Include="ConeDetails.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

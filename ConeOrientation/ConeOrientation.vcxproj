@@ -133,9 +133,11 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Colors.h" />
+    <ClInclude Include="ConeDetails.h" />
     <ClInclude Include="Contours.h" />
     <ClInclude Include="MultiImageWindow.h" />
     <ClInclude Include="Parameters.h" />
+    <ClInclude Include="Points.h" />
     <ClInclude Include="Trigonometry.h" />
     <ClInclude Include="Wrappers.h" />
   </ItemGroup>
