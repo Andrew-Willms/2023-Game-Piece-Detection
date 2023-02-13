@@ -14,7 +14,7 @@ class Parameters {
 
 		int HueMin = 2;
 		int HueMax = 29;
-		int SaturationMin = 164;
+		int SaturationMin = 108;
 		int SaturationMax = 255;
 		int ValueMin = 40;
 		int ValueMax = 255;
@@ -32,7 +32,7 @@ class Parameters {
 		int ContourDilation = 5;
 		int ContourErosion = 3;
 		 
-		int MinContourArea = 5000;
+		int MinContourArea = 2000;
 		int MaxContourArea = 75000;
 
 		const Point2i CameraResolution = Point2i(640, 480) + Point2i(2, 2); // plus 2 to each for the borders
