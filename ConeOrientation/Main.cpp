@@ -129,7 +129,7 @@ void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const
 
 int main() {
 
-	constexpr int cameraId = 0;
+	constexpr int cameraId = 1;
 	VideoCapture videoCapture(cameraId);
 	Mat image, preProcessedImage;
 
