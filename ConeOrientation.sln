@@ -5,6 +5,13 @@ VisualStudioVersion = 17.5.33312.197
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "ConeOrientation", "ConeOrientation\ConeOrientation.vcxproj", "{1C058462-A025-4F3E-BEEA-948142A1B25A}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RobotCode", "RobotCode", "{429EF7E7-1A1A-444D-8485-C2C2618E0534}"
+	ProjectSection(SolutionItems) = preProject
+		..\..\Downloads\main.cpp = ..\..\Downloads\main.cpp
+		..\..\Downloads\main_original.cpp = ..\..\Downloads\main_original.cpp
+		..\..\Downloads\Parameters.h = ..\..\Downloads\Parameters.h
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x64 = Debug|x64
