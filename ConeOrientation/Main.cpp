@@ -1,8 +1,10 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
+
 #include <chrono>
 #include <iostream>
 #include <string>
+
 #include "Colors.h"
 #include "ConeDetails.h"
 #include "Contours.h"
@@ -28,12 +30,9 @@ void CeilingToOdd(int& number) {
 	}
 }
 
-
-
 void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow& guiWindow) {
 
 	Mat imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded;
-
 
 	CeilingToOdd(parameters.BlurKernelSize);
 	CeilingToOdd(parameters.ContourDilation);
@@ -124,8 +123,6 @@ void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const
 	guiWindow.AddImage(targetImage, 3, 1, "Contours");
 }
 
-
-
 int main() {
 
 	vector<VideoCapture> videoCaptures = vector<VideoCapture>();
@@ -149,12 +146,11 @@ int main() {
 			image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
 		}
 
-		ConeDetails coneDetails{};
-
 #ifdef PRINT_TIME
 		time_point<steady_clock> startTime = high_resolution_clock::now();
 #endif
 
+		ConeDetails coneDetails{};
 		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
 		ComputeConeDetails(coneContour, parameters, &coneDetails);
