@@ -1,7 +1,6 @@
 ﻿#pragma once
 
 #include <opencv2/highgui.hpp>
-#include "Trigonometry.h"
 
 using namespace cv;
 
@@ -11,15 +10,11 @@ class Parameters {
 
 	public:
 
-		int CameraId = 0;
-		int WindowWidth = 1900;
-		int WindowHeight = 1000;
-
-		int HueMin = 10;
+		int HueMin = 6;
 		int HueMax = 30;
-		int SaturationMin = 55;
+		int SaturationMin = 95;
 		int SaturationMax = 255;
-		int ValueMin = 171;
+		int ValueMin = 94;
 		int ValueMax = 255;
 
 		int MaskErosion = 11;
@@ -35,23 +30,12 @@ class Parameters {
 		int ContourDilation = 5;
 		int ContourErosion = 3;
 		 
-		int MinContourArea = 2000;
+		int MinContourArea = 5000;
 		int MaxContourArea = 75000;
-
-		const Point2i CameraResolution = Point2i(640, 480) + Point2i(2, 2); // plus 2 to each for the borders
-		const Point2d CameraFov = Point2d(54.18l / 180.0l * PI, 39.93l / 180.0l * PI); // 3.6mm ELP
-		//const Point2d CameraFov = Point2d(48.5l / 180.0l * PI, 36.0l / 180.0l * PI); // Microsoft Lifecam HD 3000
-		
-		Point3d CameraOffset = Point3d(0, -3, 52);
-		Point2d CameraAngle = Point2d(0.0l / 180.0l * PI, -60.0l / 180.01 * PI);
 
 		void CreateTrackbars() {
 
 			namedWindow("Sliders", 100);
-
-			createTrackbar("CameraId", "Sliders", &CameraId, 3);
-			createTrackbar("Window Width", "Sliders", &WindowWidth, 4000);
-			createTrackbar("Window Height", "Sliders", &WindowHeight, 2000);
 
 			createTrackbar("Hue Min", "Sliders", &HueMin, 179);
 			createTrackbar("Hue Max", "Sliders", &HueMax, 179);
@@ -75,6 +59,7 @@ class Parameters {
 
 			createTrackbar("Min Area", "Sliders", &MinContourArea, 100000);
 			createTrackbar("Max Area", "Sliders", &MaxContourArea, 100000);
+
 		}
 
 };
