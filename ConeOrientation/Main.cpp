@@ -12,12 +12,12 @@
 #include "Trigonometry.h"
 #include "Points.h"
 
+//#define SHOW_UI true;
+#define PRINT_TIME true;
+
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
-
-constexpr bool SHOW_UI = true;
-constexpr bool PRINT_TIME = false;
 
 
 
@@ -33,6 +33,7 @@ void CeilingToOdd(int& number) {
 void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow& guiWindow) {
 
 	Mat imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded;
+
 
 	CeilingToOdd(parameters.BlurKernelSize);
 	CeilingToOdd(parameters.ContourDilation);
@@ -55,10 +56,7 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 
 	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, WHITE);
 
-	if (!SHOW_UI) {
-		return;
-	}
-
+#ifdef SHOW_UI
 	guiWindow.AddImage(mask, 0, 0, "Mask");
 	guiWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
 	guiWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
@@ -66,6 +64,7 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 	guiWindow.AddImage(edges, 0, 1, "Canny");
 	guiWindow.AddImage(contoursDilated, 1, 1, "Dilated");
 	guiWindow.AddImage(targetImage, 2, 1, "Eroded, Bordered");
+#endif
 }
 
 vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters parameters) {
@@ -138,9 +137,9 @@ int main() {
 	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 2);
 
 	Parameters parameters = Parameters();
-	if (SHOW_UI) {
-		parameters.CreateTrackbars();
-	}
+#ifdef SHOW_UI
+	parameters.CreateTrackbars();
+#endif
 
 	while (true) {
 
@@ -152,22 +151,24 @@ int main() {
 
 		ConeDetails coneDetails{};
 
+#ifdef PRINT_TIME
 		time_point<steady_clock> startTime = high_resolution_clock::now();
+#endif
 
 		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
 		ComputeConeDetails(coneContour, parameters, &coneDetails);
 
-		if (SHOW_UI) {
-			DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
-			multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
-		}
+#ifdef SHOW_UI
+		DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
+		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
+#endif
 
-		if (PRINT_TIME) {
-			time_point<steady_clock> endTime = high_resolution_clock::now();
-			duration<double, milli> duration = endTime - startTime;
-			cout << duration.count() << endl;
-		}
+#ifdef PRINT_TIME
+		time_point<steady_clock> endTime = high_resolution_clock::now();
+		duration<double, milli> duration = endTime - startTime;
+		cout << duration.count() << endl;
+#endif
 
 		waitKey(1);
 	}
