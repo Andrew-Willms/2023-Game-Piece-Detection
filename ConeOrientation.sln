@@ -14,16 +14,22 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "RobotCode", "RobotCode", "{
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
 		Debug|x64 = Debug|x64
 		Debug|x86 = Debug|x86
+		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|Any CPU.ActiveCfg = Debug|x64
+		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|Any CPU.Build.0 = Debug|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|x64.ActiveCfg = Debug|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|x64.Build.0 = Debug|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|x86.ActiveCfg = Debug|Win32
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Debug|x86.Build.0 = Debug|Win32
+		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Release|Any CPU.ActiveCfg = Release|x64
+		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Release|Any CPU.Build.0 = Release|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Release|x64.ActiveCfg = Release|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Release|x64.Build.0 = Release|x64
 		{1C058462-A025-4F3E-BEEA-948142A1B25A}.Release|x86.ActiveCfg = Release|Win32

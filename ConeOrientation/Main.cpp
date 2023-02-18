@@ -1,6 +1,5 @@
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
-#include <cmath>
 #include <chrono>
 #include <iostream>
 #include <string>
@@ -18,7 +17,7 @@ using namespace std;
 using namespace std::chrono;
 
 constexpr bool SHOW_UI = true;
-constexpr bool PRINT_TIME = true;
+constexpr bool PRINT_TIME = false;
 
 
 
@@ -31,7 +30,7 @@ void CeilingToOdd(int& number) {
 
 
 
-void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow guiWindow) {
+void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow& guiWindow) {
 
 	Mat imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded;
 
@@ -50,6 +49,7 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 
 	GaussianBlur(maskDilated, blurred, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
 	Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
+
 	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
 	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
 
@@ -129,11 +129,13 @@ void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const
 
 int main() {
 
-	constexpr int cameraId = 1;
-	VideoCapture videoCapture(cameraId);
-	Mat image, preProcessedImage;
+	vector<VideoCapture> videoCaptures = vector<VideoCapture>();
+	for (int i = 0; i < 4; i++) {
+		videoCaptures.emplace_back(i);
+	}
 
-	MultiImageWindow multiImageWindow = MultiImageWindow("Window", 1920, 980, 4, 2);
+	Mat image, preProcessedImage;
+	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 2);
 
 	Parameters parameters = Parameters();
 	if (SHOW_UI) {
@@ -142,8 +144,13 @@ int main() {
 
 	while (true) {
 
+		videoCaptures[parameters.CameraId].read(image);
+
+		if (image.rows == 0) {
+			image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
+		}
+
 		ConeDetails coneDetails{};
-		videoCapture.read(image);
 
 		time_point<steady_clock> startTime = high_resolution_clock::now();
 
@@ -153,7 +160,7 @@ int main() {
 
 		if (SHOW_UI) {
 			DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
-			multiImageWindow.Show();
+			multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
 		}
 
 		if (PRINT_TIME) {

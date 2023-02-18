@@ -13,15 +13,17 @@ class MultiImageWindow {
 
 		string WindowTitle;
 
-		uint TotalImageWidth;
-		uint TotalImageHeight;
+		uint TotalImageWidth = 300;
+		uint TotalImageHeight = 200;
 		
 		uint ColumnCount;
 		uint RowCount;
 
 		Mat WholeImage;
+		vector<vector<Mat>> SubImages;
+		vector<vector<String>> SubImageNames;
 
-		Mat GetSubImage(const uint column, const uint row) const {
+		Mat GetImagePortion(const uint column, const uint row) const {
 
 			if (row >= RowCount) {
 				return Mat();
@@ -82,7 +84,7 @@ class MultiImageWindow {
 			const int currentHeight = image.rows;
 
 			const double horizontalScaleFactor = GetSubImageWidth() / (double)currentWidth;
-			const double verticalScaleFactor = GetSubImageWidth() / (double)currentHeight;
+			const double verticalScaleFactor = GetSubImageHeight() / (double)currentHeight;
 			const double scaleFactor = min(horizontalScaleFactor, verticalScaleFactor);
 
 			Mat imageResized;
@@ -104,17 +106,16 @@ class MultiImageWindow {
 
 	public:
 
-		MultiImageWindow(const string& windowTitle, const uint totalImageWidth, const uint totalImageHeight, const uint columnCount, const uint rowCount) {
+		MultiImageWindow(const string& windowTitle, const uint columnCount, const uint rowCount) {
 
 			WindowTitle = windowTitle;
-
-			TotalImageWidth = totalImageWidth;
-			TotalImageHeight = totalImageHeight;
 
 			ColumnCount = columnCount;
 			RowCount = rowCount;
 
-			WholeImage = Mat(totalImageHeight, totalImageWidth, CV_8UC3, BLACK);
+			const Mat placeHolderSubImage = Mat(10, 10, CV_8UC3, GREEN);
+			SubImages = vector<vector<Mat>>(columnCount, vector<Mat>(rowCount, placeHolderSubImage));
+			SubImageNames = vector<vector<string>>(columnCount, vector<string>(rowCount, ""));
 		}
 
 		void AddImage(const Mat& image, const uint column, const uint row, const string& subtitle = "") {
@@ -127,16 +128,35 @@ class MultiImageWindow {
 				return;
 			}
 
-			const Mat threeChannelImage = ConvertedTo3Channel(image);
-			const Mat imageResized = ResizedToSubImage(threeChannelImage);
+			Mat copy;
+			image.copyTo(copy);
 
-			Mat subImage = GetSubImage(column, row);
-			imageResized.copyTo(subImage);
-
-			PrintSubtitle(column, row, subtitle);
+			SubImages[column][row] = copy;
+			SubImageNames[column][row] = subtitle;
 		}
 
-		void Show() const {
+		void Show(const int windowWidth, const int windowHeight) {
+
+			TotalImageWidth = max(windowWidth, 200);
+			TotalImageHeight = max(windowHeight, 200);
+
+			WholeImage = Mat(TotalImageHeight, TotalImageWidth, CV_8UC3, BLACK);
+
+			for (uint column = 0; column < ColumnCount; column++) {
+				for(uint row = 0; row < RowCount; row++) {
+
+					Mat image = SubImages[column][row];
+
+					const Mat threeChannelImage = ConvertedTo3Channel(image);
+					const Mat imageResized = ResizedToSubImage(threeChannelImage);
+
+					Mat imagePortion = GetImagePortion(column, row);
+					imageResized.copyTo(imagePortion);
+
+					PrintSubtitle(column, row, SubImageNames[column][row]);
+				}
+			}
+
 			imshow("WindowTitle", WholeImage);
 		}
 

@@ -11,6 +11,10 @@ class Parameters {
 
 	public:
 
+		int CameraId = 0;
+		int WindowWidth = 1920;
+		int WindowHeight = 1080;
+
 		int HueMin = 10;
 		int HueMax = 30;
 		int SaturationMin = 55;
@@ -44,6 +48,10 @@ class Parameters {
 		void CreateTrackbars() {
 
 			namedWindow("Sliders", 100);
+
+			createTrackbar("CameraId", "Sliders", &CameraId, 3);
+			createTrackbar("Window Width", "Sliders", &WindowWidth, 4000);
+			createTrackbar("Window Height", "Sliders", &WindowHeight, 2000);
 
 			createTrackbar("Hue Min", "Sliders", &HueMin, 179);
 			createTrackbar("Hue Max", "Sliders", &HueMax, 179);

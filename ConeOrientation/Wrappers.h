@@ -24,5 +24,5 @@ inline void SquareErode(InputArray source, OutputArray destination, int kernelSi
 	}
 
 	const Mat erosionKernel = getStructuringElement(MORPH_RECT, Size(kernelSize, kernelSize));
-	cv::erode(source, destination, erosionKernel);
+	erode(source, destination, erosionKernel);
 }
