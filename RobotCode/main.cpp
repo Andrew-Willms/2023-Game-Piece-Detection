@@ -27,11 +27,24 @@ using namespace std::chrono;
 
 
 
-double angle = 0;
-double xPosition = 0;
-double yPosition = 0;
+#ifdef PRINT_DATA
+string FixLength(const string& text, const char length) {
 
+	int textLength = text.length();
 
+	if (textLength > length) {
+		return text.substr(0, length);
+	}
+
+	const string spaces =
+		"                                                                "
+		"                                                                "
+		"                                                                "
+		"                                                                ";
+
+	return text + spaces.substr(0, length - textLength);
+}
+#endif
 
 void CeilingToOdd(int& number) {
 
@@ -59,7 +72,7 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
 	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
 
-	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, WHITE);
+	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT);
 }
 
 vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters parameters) {
@@ -78,11 +91,10 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 	return *BiggestContour(filteredContours);
 }
 
-void ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
+bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
 
 	if (coneContour.empty()) {
-		output = nullptr;
-		return;
+		return false;
 	}
 
 	const Point2i centroid = ContourCentroid(coneContour);
@@ -97,6 +109,7 @@ void ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
 
 	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, coneAngle);
+	return true;
 }
 
 int main() {
@@ -109,49 +122,59 @@ int main() {
 		return 0;
 	}
 
-	Mat image, imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded, contours;
+	Mat image, preProcessedImage;
 
 	Parameters parameters = Parameters();
 	CeilingToOdd(parameters.BlurKernelSize);
 	CeilingToOdd(parameters.ContourDilation);
 	CeilingToOdd(parameters.ContourErosion);
 	
-	//nt::DoublePublisher dblPubAngle, dblPubX, dblPubY;
-	//auto inst = nt::NetworkTableInstance::GetDefault();
-	//auto table = inst.GetTable("rpi");
-	////auto pubOp = new PubSubOption();
-	//inst.StartClient4("example client");
-	//inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
-	//inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
-	//dblPubAngle = table->GetDoubleTopic("tv_angle").Publish();
-	//dblPubX = table->GetDoubleTopic("tv_x").Publish();
-	//dblPubY = table->GetDoubleTopic("tv_y").Publish();
-	//int cnt = 0;
+	nt::DoublePublisher dblPubFound, dblPubAngle, dblPubX, dblPubY;
+	auto inst = nt::NetworkTableInstance::GetDefault();
+	auto table = inst.GetTable("rpi");
+	//auto pubOp = new PubSubOption();
+	inst.StartClient4("example client");
+	inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
+	inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
+	dblPubFound = table->GetDoubleTopic("cone_found").Publish();
+	dblPubAngle = table->GetDoubleTopic("cone_angle").Publish();
+	dblPubX = table->GetDoubleTopic("cone_x").Publish();
+	dblPubY = table->GetDoubleTopic("cone_y").Publish();
+	int cnt = 0;
 
 	while (true) {
+
+#ifdef PRINT_DATA
+		time_point<system_clock> startTime = high_resolution_clock::now();
+#endif
 
 		videoCapture.read(image);
 
 #ifdef PRINT_DATA
-		time_point<steady_clock> startTime = high_resolution_clock::now();
+		time_point<system_clock> readingTime = high_resolution_clock::now();
 #endif
 
 		ConeDetails coneDetails{};
 		PreProcessImage(image, preProcessedImage, parameters);
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
-		ComputeConeDetails(coneContour, parameters, &coneDetails);
+		bool coneFound = ComputeConeDetails(coneContour, parameters, &coneDetails);
+
+		dblPubFound.Set(coneFound);
+		dblPubAngle.Set(coneDetails.GetAngle() * 180l / PI);
+		dblPubX.Set(coneDetails.GetCentroidPosition().x);
+		dblPubY.Set(coneDetails.GetCentroidPosition().y);
 
 #ifdef PRINT_DATA
 		time_point<system_clock> endTime = high_resolution_clock::now();
-		duration<double, milli> duration = endTime - startTime;
-		//dblPubAngle.Set((angle * 180l / 3.14159l));
-		//dblPubX.Set(xPosition);
-		//dblPubY.Set(yPosition);
+		duration<double, milli> readingDuration = readingTime - startTime;
+		duration<double, milli> findingDuration = endTime - readingTime;
+
 		fmt::print(
-			"t: " + to_string(duration.count()) + 
-			", x: " + to_string(coneDetails.GetCentroidPosition().x) +
-			", y: " + to_string(coneDetails.GetCentroidPosition().y) +
-			", angle: " + to_string(coneDetails.GetAngle() * 180l / 3.14159l) + "\n");
+			"reading: " + FixLength(to_string(readingDuration.count()), 8) +
+			",   finding: " + FixLength(to_string(findingDuration.count()), 8) +
+			",   x: " + FixLength(to_string(coneDetails.GetCentroidPosition().x), 8) +
+			",   y: " + FixLength(to_string(coneDetails.GetCentroidPosition().y), 8) +
+			",   angle: " + FixLength(to_string(coneDetails.GetAngle() * 180l / PI), 8) + "\n");
 #endif
 
 		waitKey(1);

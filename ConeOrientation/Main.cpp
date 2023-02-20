@@ -82,11 +82,10 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 	return *BiggestContour(filteredContours);
 }
 
-void ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
+bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
 
 	if (coneContour.empty()) {
-		output = nullptr;
-		return;
+		return false;
 	}
 
 	const Point2i centroid = ContourCentroid(coneContour);
@@ -101,6 +100,7 @@ void ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
 
 	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, coneAngle);
+	return true;
 }
 
 void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const ConeDetails& coneDetails, MultiImageWindow& guiWindow) {
@@ -114,7 +114,7 @@ void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const
 
 	line(targetImage, coneDetails.GetTipCameraPosition(), coneDetails.GetCentroidCameraPosition(), RED);
 
-	const string text = "X:" + to_string(coneDetails.GetCentroidPosition().x) + 
+	const string text = "X:" + to_string(coneDetails.GetCentroidPosition().x) +
 						", Y:" + to_string(coneDetails.GetCentroidPosition().y) +
 						", A:" + to_string(coneDetails.GetAngle() * 180 / PI);
 
