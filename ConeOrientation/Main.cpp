@@ -14,8 +14,8 @@
 #include "Trigonometry.h"
 #include "Points.h"
 
-//#define SHOW_UI true;
-#define PRINT_TIME true;
+#define SHOW_UI true;
+//#define PRINT_TIME true;
 
 using namespace cv;
 using namespace std;
@@ -103,6 +103,44 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	return true;
 }
 
+vector<vector<Point2i>> GetConeCornerGroups(const vector<Point2i>& coneContour, const ConeDetails coneDetails) {
+
+	const double distanceToTip = DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition());
+
+	bool startNewCornerGroupOnNextPoint = true;
+	vector<vector<Point2i>> cornerGroups = vector<vector<Point2i>>();
+
+	for (Point2i point : coneContour) {
+
+		if (DistanceBetweenPoints(point, coneDetails.GetCentroidCameraPosition()) < distanceToTip * 0.85) {
+			startNewCornerGroupOnNextPoint = true;
+			continue;
+		}
+
+		if (startNewCornerGroupOnNextPoint || cornerGroups.empty()) {
+			cornerGroups.emplace_back();
+			startNewCornerGroupOnNextPoint = false;
+		}
+
+		cornerGroups.back().push_back(point);
+	}
+
+	if (cornerGroups.size() < 2) {
+		return cornerGroups;
+	}
+
+	if (cornerGroups.back().back() == coneContour.back() && cornerGroups.front().front() == coneContour.front()) {
+
+		for (Point2i point : cornerGroups.back()) {
+			cornerGroups.front().push_back(point);
+		}
+
+		cornerGroups.pop_back();
+	}
+
+	return cornerGroups;
+}
+
 void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const ConeDetails& coneDetails, MultiImageWindow& guiWindow) {
 
 	if (coneContour.empty()) {
@@ -155,10 +193,29 @@ int main() {
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
 		ComputeConeDetails(coneContour, parameters, &coneDetails);
 
+		vector<vector<Point2i>> cornerGroups = GetConeCornerGroups(coneContour, coneDetails);
+
+#ifdef SHOW_UI
+		circle(image, coneDetails.GetCentroidCameraPosition(),
+			DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition()) * 0.8, GREEN, 2);
+
+		int colorIndex = 0;
+		for (const vector<Point2i>& cornerGroup : cornerGroups) {
+			for (Point2i point : cornerGroup) {
+				drawMarker(image, point, GetColorByIndex(colorIndex));
+			}
+			colorIndex++;
+		}
+#endif
+
 #ifdef SHOW_UI
 		DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
 		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
 #endif
+
+		if (cornerGroups.size() > 3) {
+			coneDetails = ConeDetails();
+		}
 
 #ifdef PRINT_TIME
 		time_point<steady_clock> endTime = high_resolution_clock::now();

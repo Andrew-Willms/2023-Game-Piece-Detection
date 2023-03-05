@@ -14,29 +14,29 @@ class Parameters {
 		int CameraId = 0;
 		int WindowWidth = 1900;
 		int WindowHeight = 1000;
-
-		int HueMin = 10;
-		int HueMax = 30;
-		int SaturationMin = 55;
-		int SaturationMax = 255;
-		int ValueMin = 171;
-		int ValueMax = 255;
-
-		int MaskErosion = 11;
-		int MaskDilation = 11;
-
-		int BlurKernelSize = 6;
-		int BlurSigmaX = 5;
-		int BlurSigmaY = 0;
-		 
-		int CannyThreshold1 = 50;
-		int CannyThreshold2 = 150;
-		 
-		int ContourDilation = 5;
-		int ContourErosion = 3;
-		 
-		int MinContourArea = 2000;
-		int MaxContourArea = 75000;
+											//  3.6 ELP      |	JIGA	|
+		int HueMin = 2;						//	10			 |	6		|
+		int HueMax = 30;					//	30			 |	30		|
+		int SaturationMin = 0;				//	55			 |	0		|
+		int SaturationMax = 255;			//	255			 |	140		|
+		int ValueMin = 100;					//	171			 |	176		|
+		int ValueMax = 255;					//	255			 |	255		|
+											//				 |			|
+		int MaskErosion = 7;				//	11			 |			|
+		int MaskDilation = 7;				//	11			 |			|
+											//				 |			|
+		int BlurKernelSize = 11;			//	6			 |			|
+		int BlurSigmaX = 5;					//	5			 |			|
+		int BlurSigmaY = 0;					//	0			 |			|
+											//				 |			|
+		int CannyThreshold1 = 100;			//	50			 |			|
+		int CannyThreshold2 = 150;			//	150			 |			|
+											//				 |			|
+		int ContourDilation = 7;			//  5			 |			|
+		int ContourErosion = 3;				//	3			 |			|
+											//				 |			|
+		int MinContourArea = 2000;			//	2000		 |			|
+		int MaxContourArea = 75000;			//	75000		 |			|
 
 		const Point2i CameraResolution = Point2i(640, 480) + Point2i(2, 2); // plus 2 to each for the borders
 		const Point2d CameraFov = Point2d(54.18l / 180.0l * PI, 39.93l / 180.0l * PI); // 3.6mm ELP
