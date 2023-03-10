@@ -3,6 +3,8 @@
 #include <opencv2/imgproc.hpp>
 #include <opencv2/core/types.hpp>
 
+#include "Points.h"
+
 using namespace std;
 using namespace cv;
 
@@ -82,4 +84,48 @@ inline const vector<Point2i>* BiggestContour(const vector<vector<Point2i>>& cont
 	}
 
 	return biggestContour;
+}
+
+inline const vector<Point2i>* MostCentralAndSmallestContour(const vector<vector<Point2i>>& contours, const Point2i cameraResolution) {
+
+	if (contours.empty()) {
+		return nullptr;
+	}
+
+	const Point2i centerPoint = Point2i(cameraResolution.x / 2, cameraResolution.y / 2);
+
+	const vector<Point2i>* mostCentralContour = contours.data();
+	double smallestDistanceToCenter = DistanceBetweenPoints(ContourCentroid(*contours.data()), centerPoint);
+	double smallestContourArea = contourArea(*contours.data());
+
+	for (const vector<Point2i>& contour : contours) {
+
+		const Point2i currentCentroid = ContourCentroid(contour);
+		const double currentDistanceToCenter = DistanceBetweenPoints(currentCentroid, centerPoint);
+		//const double currentContourArea = contourArea(contour);
+
+		if (currentDistanceToCenter < smallestDistanceToCenter) {
+			smallestDistanceToCenter = currentDistanceToCenter;
+			mostCentralContour = &contour;
+		}
+
+		// I don't think this does anything so I commented it out and simplified the top case above.
+		//if (currentDistanceToCenter < smallestDistanceToCenter * 0.95 && currentDistanceToCenter < smallestDistanceToCenter - 15) {
+		//	//smallestDistanceToCenter = currentDistanceToCenter;
+		//	//smallestContourArea = currentContourArea;
+		//	//mostCentralContour = &contour;
+		//	continue;
+		//}
+
+		//if ((currentDistanceToCenter < smallestDistanceToCenter * 1.05 || currentDistanceToCenter < smallestDistanceToCenter + 15)
+		//	&& currentContourArea < smallestContourArea) {
+
+		//	//smallestDistanceToCenter = currentDistanceToCenter;
+		//	//smallestContourArea = currentContourArea;
+		//	//mostCentralContour = &contour;
+		//	cout << "changing selected contour because of size" << endl;
+		//}
+	}
+
+	return mostCentralContour;
 }
