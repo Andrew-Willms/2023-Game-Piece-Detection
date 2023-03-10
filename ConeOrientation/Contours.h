@@ -96,7 +96,7 @@ inline const vector<Point2i>* MostCentralAndSmallestContour(const vector<vector<
 
 	const vector<Point2i>* mostCentralContour = contours.data();
 	double smallestDistanceToCenter = DistanceBetweenPoints(ContourCentroid(*contours.data()), centerPoint);
-	double smallestContourArea = contourArea(*contours.data());
+	//double smallestContourArea = contourArea(*contours.data());
 
 	for (const vector<Point2i>& contour : contours) {
 
