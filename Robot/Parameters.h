@@ -10,32 +10,32 @@ class Parameters {
 
 	public:
 									
-		int WideHueMin = 0;
-		int WideHueMax = 179;
-		int WideSaturationMin = 0;
+		int WideHueMin = 10;
+		int WideHueMax = 35;
+		int WideSaturationMin = 10;
 		int WideSaturationMax = 255;
-		int WideValueMin = 160;
+		int WideValueMin = 200;
 		int WideValueMax = 255;
-		int WideMaskErosion = 7;
-		int WideMaskDilation = 5;
+		int WideMaskErosion = 3;
+		int WideMaskDilation = 3;
 		int WideBlurKernelSize = 30;
 		int WideBlurSigmaX = 5;
 		int WideBlurSigmaY = 0;
-		int WideMaskWeight = 45;
+		int WideMaskWeight = 40;
 
-		int NarrowHueMin = 0;
-		int NarrowHueMax = 50;
-		int NarrowSaturationMin = 0;
+		int NarrowHueMin = 20;
+		int NarrowHueMax = 35;
+		int NarrowSaturationMin = 50;
 		int NarrowSaturationMax = 255;
-		int NarrowValueMin = 200;
+		int NarrowValueMin = 210;
 		int NarrowValueMax = 255;
-		int NarrowMaskErosion = 5;
-		int NarrowMaskDilation = 5;
+		int NarrowMaskErosion = 3;
+		int NarrowMaskDilation = 3;
 		int NarrowBlurKernelSize = 30;
 		int NarrowBlurSigmaX = 5;
 		int NarrowBlurSigmaY = 0;
 
-		int MaskThreshold = 108;
+		int MaskThreshold = 112;
 
 		int CannyThreshold1 = 100;
 		int CannyThreshold2 = 150;

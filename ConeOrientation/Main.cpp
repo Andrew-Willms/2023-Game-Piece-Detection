@@ -15,8 +15,8 @@
 #include "Points.h"
 
 #define SHOW_UI true;
-//#define FROM_WEBCAM true
-#define FROM_FILE "cone.mp4"
+#define FROM_WEBCAM true
+//#define FROM_FILE "cone.mp4"
 //#define PRINT_TIME true;
 
 using namespace cv;

@@ -1,3 +1,8 @@
+#include <fmt/format.h>
+#include <networktables/NetworkTableInstance.h>
+#include <networktables/NetworkTable.h>
+#include <networktables/DoubleTopic.h>
+
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
@@ -18,6 +23,10 @@ using namespace std;
 using namespace std::chrono;
 
 
+
+
+nt::DoublePublisher dblPubFound, dblPubAngle, dblPubX, dblPubY;
+nt::NetworkTableInstance inst;
 
 #ifdef PRINT_DATA
 string FixLength(const string& text, const char length) {
@@ -252,6 +261,24 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	return true;
 }
 
+void ConnectToNetworkTables() {
+
+#ifdef PRINT_DATA
+	fmt::print("Connecting to network tables.\n");
+#endif
+
+	inst = nt::NetworkTableInstance::GetDefault();
+	auto table = inst.GetTable("rpi");
+	//auto pubOp = new PubSubOption();
+	inst.StartClient4("example client");
+	inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
+	inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
+	dblPubFound = table->GetDoubleTopic("cone_found").Publish();
+	dblPubAngle = table->GetDoubleTopic("cone_angle").Publish();
+	dblPubX = table->GetDoubleTopic("cone_x").Publish();
+	dblPubY = table->GetDoubleTopic("cone_y").Publish();
+}
+
 int main() {
 
 	fmt::print("Starting cone detection.\n");
@@ -270,20 +297,16 @@ int main() {
 	CeilingToOdd(parameters.ContourDilation);
 	CeilingToOdd(parameters.ContourErosion);
 
-	nt::DoublePublisher dblPubFound, dblPubAngle, dblPubX, dblPubY;
-	auto inst = nt::NetworkTableInstance::GetDefault();
-	auto table = inst.GetTable("rpi");
-	//auto pubOp = new PubSubOption();
-	inst.StartClient4("example client");
-	inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
-	inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
-	dblPubFound = table->GetDoubleTopic("cone_found").Publish();
-	dblPubAngle = table->GetDoubleTopic("cone_angle").Publish();
-	dblPubX = table->GetDoubleTopic("cone_x").Publish();
-	dblPubY = table->GetDoubleTopic("cone_y").Publish();
-	int cnt = 0;
+	ConnectToNetworkTables();
 
+	int iterationCount = 0;
 	while (true) {
+
+		iterationCount++;
+
+		if (iterationCount % 50 == 0) {
+			ConnectToNetworkTables();
+		}
 
 #ifdef PRINT_DATA
 		time_point<system_clock> startTime = high_resolution_clock::now();
