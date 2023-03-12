@@ -15,6 +15,8 @@
 #include "Points.h"
 
 #define SHOW_UI true;
+#define FROM_WEBCAM true
+//#define FROM_FILE "cone.mp4"
 //#define PRINT_TIME true;
 
 using namespace cv;
@@ -32,23 +34,39 @@ void CeilingToOdd(int& number) {
 
 void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow& guiWindow) {
 
-	Mat imageHsv, mask, maskDilated, maskEroded, blurred, edges, contoursDilated, contoursEroded;
+	Mat imageHsv, masksMerged, masksMergedDigitized, edges, contoursDilated, contoursEroded;
+	Mat wideMask, wideMaskEroded, wideMaskDilated, wideMaskBlurred;
+	Mat narrowMask, narrowMaskDilated, narrowMaskEroded, narrowMaskBlurred;
 
-	CeilingToOdd(parameters.BlurKernelSize);
+	CeilingToOdd(parameters.NarrowBlurKernelSize);
+	CeilingToOdd(parameters.WideBlurKernelSize);
 	CeilingToOdd(parameters.ContourDilation);
 	CeilingToOdd(parameters.ContourErosion);
 
-	Scalar lowerColorLimit = Scalar(parameters.HueMin, parameters.SaturationMin, parameters.ValueMin);
-	Scalar upperColorLimit = Scalar(parameters.HueMax, parameters.SaturationMax, parameters.ValueMax);
+	Scalar wideLowerColorLimit = Scalar(parameters.WideHueMin, parameters.WideSaturationMin, parameters.WideValueMin);
+	Scalar wideUpperColorLimit = Scalar(parameters.WideHueMax, parameters.WideSaturationMax, parameters.WideValueMax);
+
+	Scalar narrowLowerColorLimit = Scalar(parameters.NarrowHueMin, parameters.NarrowSaturationMin, parameters.NarrowValueMin);
+	Scalar narrowUpperColorLimit = Scalar(parameters.NarrowHueMax, parameters.NarrowSaturationMax, parameters.NarrowValueMax);
 
 	cvtColor(sourceImage, imageHsv, COLOR_BGR2HSV);
-	inRange(imageHsv, lowerColorLimit, upperColorLimit, mask);
+	inRange(imageHsv, wideLowerColorLimit, wideUpperColorLimit, wideMask);
+	inRange(imageHsv, narrowLowerColorLimit, narrowUpperColorLimit, narrowMask);
 
-	SquareErode(mask, maskEroded, parameters.MaskErosion);
-	SquareDilate(maskEroded, maskDilated, parameters.MaskDilation);
+	SquareErode(wideMask, wideMaskEroded, parameters.WideMaskErosion);
+	SquareDilate(wideMaskEroded, wideMaskDilated, parameters.WideMaskDilation);
 
-	GaussianBlur(maskDilated, blurred, Size(parameters.BlurKernelSize, parameters.BlurKernelSize), parameters.BlurSigmaX, parameters.BlurSigmaY);
-	Canny(blurred, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
+	SquareDilate(narrowMask, narrowMaskDilated, parameters.NarrowMaskDilation);
+	SquareErode(narrowMaskDilated, narrowMaskEroded, parameters.NarrowMaskErosion);
+
+	GaussianBlur(wideMaskDilated, wideMaskBlurred, Size(parameters.WideBlurKernelSize, parameters.WideBlurKernelSize), parameters.WideBlurSigmaX, parameters.WideBlurSigmaY);
+	GaussianBlur(narrowMaskEroded, narrowMaskBlurred, Size(parameters.NarrowBlurKernelSize, parameters.NarrowBlurKernelSize), parameters.NarrowBlurSigmaX, parameters.NarrowBlurSigmaY);
+
+	masksMerged = parameters.WideMaskWeight / 100.0 * wideMaskBlurred + (100 - parameters.WideMaskWeight) / 100.0 * narrowMaskBlurred;
+
+	inRange(masksMerged, parameters.MaskThreshold, Scalar(255), masksMergedDigitized);
+
+	Canny(masksMergedDigitized, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
 
 	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
 	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
@@ -56,13 +74,21 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, WHITE);
 
 #ifdef SHOW_UI
-	guiWindow.AddImage(mask, 0, 0, "Mask");
-	guiWindow.AddImage(maskEroded, 1, 0, "Mask Eroded");
-	guiWindow.AddImage(maskDilated, 2, 0, "Mask Dilated");
-	guiWindow.AddImage(blurred, 3, 0, "Blur");
-	guiWindow.AddImage(edges, 0, 1, "Canny");
-	guiWindow.AddImage(contoursDilated, 1, 1, "Dilated");
-	guiWindow.AddImage(targetImage, 2, 1, "Eroded, Bordered");
+	guiWindow.AddImage(wideMask, 0, 0, "W Mask");
+	guiWindow.AddImage(wideMaskEroded, 1, 0, "W Mask Eroded");
+	guiWindow.AddImage(wideMaskDilated, 2, 0, "W Mask Dilated");
+	guiWindow.AddImage(wideMaskBlurred, 3, 0, "W Mask Blurred");
+
+	guiWindow.AddImage(narrowMask, 0, 1, "N Mask");
+	guiWindow.AddImage(narrowMaskDilated, 1, 1, "N Mask Dilated");
+	guiWindow.AddImage(narrowMaskEroded, 2, 1, "N Mask Eroded");
+	guiWindow.AddImage(narrowMaskBlurred, 3, 1, "N Mask Blurred");
+
+	guiWindow.AddImage(masksMerged, 0, 2, "Masks Merged");
+	guiWindow.AddImage(masksMergedDigitized, 1, 2, "Digitized Mask");
+	//guiWindow.AddImage(edges, 0, 1, "Canny");
+	//guiWindow.AddImage(contoursDilated, 1, 1, "Dilated");
+	guiWindow.AddImage(targetImage, 2, 2, "Eroded");
 #endif
 }
 
@@ -79,17 +105,145 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 		return vector<Point2i>();
 	}
 
-	return *BiggestContour(filteredContours);
+	return *MostCentralAndSmallestContour(filteredContours, parameters.CameraResolution);
 }
 
-bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output) {
+void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centroidCameraPosition, 
+	const Point2i farthestPointCameraPosition, vector<vector<Point2i>>& cornerGroups) {
+
+	const double distanceToTip = DistanceBetweenPoints(centroidCameraPosition, farthestPointCameraPosition);
+
+	cornerGroups = vector<vector<Point2i>>();
+	cornerGroups.emplace_back();
+
+	for (int i = 0; i < coneContour.size(); i++) {
+
+		Point2i point = coneContour[i];
+
+		if (DistanceBetweenPoints(point, centroidCameraPosition) < distanceToTip * 0.85) {
+			continue;
+		}
+
+		if (cornerGroups.back().empty()) {
+			cornerGroups.back().push_back(point);
+			continue;
+		}
+
+		const bool continuationOfPreviousCorner = coneContour[i - 1] == cornerGroups.back().back();
+		const bool closeToPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 10;
+
+		if (!continuationOfPreviousCorner && !closeToPreviousPoint) {
+			cornerGroups.emplace_back();
+		}
+
+		cornerGroups.back().push_back(point);
+	}
+
+	if (cornerGroups.size() < 2) {
+		return;
+	}
+
+	if (cornerGroups.back().back() == coneContour.back() && cornerGroups.front().front() == coneContour.front()) {
+
+		for (Point2i point : cornerGroups.back()) {
+			cornerGroups.front().push_back(point);
+		}
+
+		cornerGroups.pop_back();
+	}
+}
+
+Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, const Point2i currentTipPosition) {
+
+	if (cornerGroups.size() < 4) {
+		return currentTipPosition;
+	}
+
+	if (cornerGroups.size() == 4) {
+
+		vector<Point2i> corners{};
+
+		corners.reserve(cornerGroups.size());
+		for (const vector<Point2i>& cornerGroup : cornerGroups) {
+			corners.push_back(AveragePointInGroup(cornerGroup));
+		}
+
+		Point2i highestPoint = corners[0];
+		Point2i secondHighestPoint = corners[1];
+
+		if (secondHighestPoint.y < highestPoint.y) {
+			const Point2i swap = highestPoint;
+			highestPoint = secondHighestPoint;
+			secondHighestPoint = swap;
+		}
+
+		for (const Point2i point : corners) {
+
+			if (point.y < secondHighestPoint.y && point.y > highestPoint.y) {
+				secondHighestPoint = point;
+				continue;
+			}
+
+			if (point.y < highestPoint.y) {
+				secondHighestPoint = highestPoint;
+				highestPoint = point;
+			}
+		}
+
+		return Point2i((highestPoint.x + secondHighestPoint.x) / 2, (highestPoint.y + secondHighestPoint.y) / 2);
+	}
+
+	if (cornerGroups.size() == 5) {
+
+		vector<Point2i> corners{};
+
+		corners.reserve(cornerGroups.size());
+		for (const vector<Point2i>& cornerGroup : cornerGroups) {
+			corners.push_back(AveragePointInGroup(cornerGroup));
+		}
+
+		Point2i highestPoint = corners[0];
+
+		for (const Point2i point : corners) {
+			if (point.y < highestPoint.y) {
+				highestPoint = point;
+			}
+		}
+
+		return highestPoint;
+	}
+
+	double sumX = 0;
+	int numberOfPoints = 0;
+	double highestYOnScreen = cornerGroups[0][0].y;
+
+	for (const vector<Point2i>& cornerGroup : cornerGroups) {
+
+		for (const Point2i point : cornerGroup) {
+
+			numberOfPoints++;
+			sumX += point.x;
+
+			if (point.y < highestYOnScreen) {
+				highestYOnScreen = point.y;
+			}
+		}
+	}
+
+	return Point2i(sumX / numberOfPoints, highestYOnScreen); 
+}
+
+bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output, vector<vector<Point2i>>& cornerGroups) {
 
 	if (coneContour.empty()) {
 		return false;
 	}
 
 	const Point2i centroid = ContourCentroid(coneContour);
-	const Point2i farthestPoint = FarthestPoint(coneContour, centroid);
+	Point2i farthestPoint = FarthestPoint(coneContour, centroid);
+
+	GetConeCornerGroups(coneContour, centroid, farthestPoint, cornerGroups);
+	farthestPoint = AdjustTipFromCornerPoints(cornerGroups, farthestPoint);
 
 	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, parameters.CameraResolution, 
 		parameters.CameraFov, parameters.CameraOffset, parameters.CameraAngle);
@@ -103,48 +257,10 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	return true;
 }
 
-vector<vector<Point2i>> GetConeCornerGroups(const vector<Point2i>& coneContour, const ConeDetails coneDetails) {
-
-	const double distanceToTip = DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition());
-
-	bool startNewCornerGroupOnNextPoint = true;
-	vector<vector<Point2i>> cornerGroups = vector<vector<Point2i>>();
-
-	for (Point2i point : coneContour) {
-
-		if (DistanceBetweenPoints(point, coneDetails.GetCentroidCameraPosition()) < distanceToTip * 0.85) {
-			startNewCornerGroupOnNextPoint = true;
-			continue;
-		}
-
-		if (startNewCornerGroupOnNextPoint || cornerGroups.empty()) {
-			cornerGroups.emplace_back();
-			startNewCornerGroupOnNextPoint = false;
-		}
-
-		cornerGroups.back().push_back(point);
-	}
-
-	if (cornerGroups.size() < 2) {
-		return cornerGroups;
-	}
-
-	if (cornerGroups.back().back() == coneContour.back() && cornerGroups.front().front() == coneContour.front()) {
-
-		for (Point2i point : cornerGroups.back()) {
-			cornerGroups.front().push_back(point);
-		}
-
-		cornerGroups.pop_back();
-	}
-
-	return cornerGroups;
-}
-
 void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const ConeDetails& coneDetails, MultiImageWindow& guiWindow) {
 
 	if (coneContour.empty()) {
-		guiWindow.AddImage(targetImage, 3, 1, "Contours");
+		guiWindow.AddImage(targetImage, 3, 2, "Contours");
 		return;
 	}
 
@@ -158,27 +274,48 @@ void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const
 
 	putText(targetImage, text, Point2i(20, 45), 0, 0.75, GREEN);
 
-	guiWindow.AddImage(targetImage, 3, 1, "Contours");
+	guiWindow.AddImage(targetImage, 3, 2, "Contours");
 }
 
 int main() {
 
+#ifdef FROM_WEBCAM
 	vector<VideoCapture> videoCaptures = vector<VideoCapture>();
 	for (int i = 0; i < 4; i++) {
 		videoCaptures.emplace_back(i);
 	}
+#endif
 
-	Mat image, preProcessedImage;
-	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 2);
+	Mat image, preProcessedImage, blackedOutImage;
+	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 3);
 
 	Parameters parameters = Parameters();
 #ifdef SHOW_UI
 	parameters.CreateTrackbars();
 #endif
 
+#ifdef FROM_FILE
+	Mat lastStoredFrame;
+	VideoCapture videoCapture("cone.mp4");
+	videoCapture.read(lastStoredFrame);
+#endif
+
+	bool getNextFrame = true;
 	while (true) {
 
+#ifdef FROM_WEBCAM
 		videoCaptures[parameters.CameraId].read(image);
+#endif
+
+#ifdef FROM_FILE
+		if (getNextFrame) {
+			videoCapture.read(image);
+			lastStoredFrame = image.clone();
+			getNextFrame = false;
+		} else {
+			image = lastStoredFrame.clone();
+		}
+#endif
 
 		if (image.rows == 0) {
 			image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
@@ -188,16 +325,16 @@ int main() {
 		time_point<steady_clock> startTime = high_resolution_clock::now();
 #endif
 
-		ConeDetails coneDetails{};
 		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
-		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
-		ComputeConeDetails(coneContour, parameters, &coneDetails);
 
-		vector<vector<Point2i>> cornerGroups = GetConeCornerGroups(coneContour, coneDetails);
+		ConeDetails coneDetails{};
+		vector<vector<Point2i>> cornerGroups{};
+		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
+		ComputeConeDetails(coneContour, parameters, &coneDetails, cornerGroups);
 
 #ifdef SHOW_UI
 		circle(image, coneDetails.GetCentroidCameraPosition(),
-			DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition()) * 0.8, GREEN, 2);
+			DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition()) * 0.85, GREEN, 2);
 
 		int colorIndex = 0;
 		for (const vector<Point2i>& cornerGroup : cornerGroups) {
@@ -213,7 +350,7 @@ int main() {
 		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
 #endif
 
-		if (cornerGroups.size() > 3) {
+  		if (cornerGroups.size() > 3) {
 			coneDetails = ConeDetails();
 		}
 
@@ -223,6 +360,6 @@ int main() {
 		cout << duration.count() << endl;
 #endif
 
-		waitKey(1);
+		getNextFrame = waitKey(1) == 32;
 	}
 }

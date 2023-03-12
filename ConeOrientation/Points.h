@@ -40,3 +40,16 @@ inline Point FarthestPoint(const vector<Point2i>& points, const Point2i basePoin
 
 	return farthestPoint;
 }
+
+inline Point2i AveragePointInGroup(const vector<Point2i>& group) {
+
+	double sumX = 0, sumY = 0;
+
+	for (const Point2i point : group) {
+
+		sumX += point.x;
+		sumY += point.y;
+	}
+
+	return Point2i(sumX / group.size(), sumY / group.size());
+}
