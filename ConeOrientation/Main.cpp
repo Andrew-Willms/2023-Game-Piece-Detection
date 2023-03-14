@@ -288,38 +288,39 @@ int main() {
 
 	Mat image, preProcessedImage, blackedOutImage;
 	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 3);
-
 	Parameters parameters = Parameters();
+
 #ifdef SHOW_UI
 	parameters.CreateTrackbars();
 #endif
 
 #ifdef FROM_FILE
-	Mat lastStoredFrame;
+	Mat frame;
+	vector<Mat> frames;
+	int currentFrameIndex = 0;
 	VideoCapture videoCapture("cone.mp4");
-	videoCapture.read(lastStoredFrame);
+
+	videoCapture.read(frame);
+
+	while (frame.rows != 0) {
+		frames.push_back(frame.clone());
+		videoCapture.read(frame);
+	}
 #endif
 
-	bool getNextFrame = true;
 	while (true) {
 
 #ifdef FROM_WEBCAM
 		videoCaptures[parameters.CameraId].read(image);
-#endif
-
-#ifdef FROM_FILE
-		if (getNextFrame) {
-			videoCapture.read(image);
-			lastStoredFrame = image.clone();
-			getNextFrame = false;
-		} else {
-			image = lastStoredFrame.clone();
-		}
-#endif
 
 		if (image.rows == 0) {
 			image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
 		}
+#endif
+
+#ifdef FROM_FILE
+		image = frames[currentFrameIndex].clone();
+#endif
 
 #ifdef PRINT_TIME
 		time_point<steady_clock> startTime = high_resolution_clock::now();
@@ -360,6 +361,33 @@ int main() {
 		cout << duration.count() << endl;
 #endif
 
-		getNextFrame = waitKey(1) == 32;
+#ifdef FROM_WEBCAM
+		waitKey(1);
+#endif
+
+
+#ifdef FROM_FILE
+		int keyPressed = waitKey(1);
+
+		if (keyPressed == 46 && currentFrameIndex + 1 < frames.size()) {
+			currentFrameIndex++;
+
+		} else if (keyPressed == 44 && currentFrameIndex > 0) {
+			currentFrameIndex--;
+
+		} else if (keyPressed == 39 && currentFrameIndex + 1 < frames.size()) {
+			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 5);
+
+		} else if (keyPressed == 59 && currentFrameIndex > 0) {
+			currentFrameIndex = max(0, currentFrameIndex - 5);
+
+		} else if (keyPressed == 93 && currentFrameIndex + 1 < frames.size()) {
+			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 25);
+
+		} else if (keyPressed == 91 && currentFrameIndex > 0) {
+			currentFrameIndex = max(0, currentFrameIndex - 25);
+		}
+#endif
+
 	}
 }
