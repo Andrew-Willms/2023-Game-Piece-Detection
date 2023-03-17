@@ -58,6 +58,7 @@ class Parameters {
 		Point3d CameraOffset = Point3d(0, -6.75, 52);
 		Point2d CameraAngle = Point2d(0.0l / 180.0l * PI, -60.0l / 180.01 * PI);
 
+#ifdef SHOW_UI
 		void CreateTrackbars() {
 
 			namedWindow("General", WINDOW_NORMAL);
@@ -105,5 +106,6 @@ class Parameters {
 			createTrackbar("Min Area", "General", &MinContourArea, 100000);
 			createTrackbar("Max Area", "General", &MaxContourArea, 100000);
 		}
+#endif
 
 };

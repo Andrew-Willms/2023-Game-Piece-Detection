@@ -40,6 +40,9 @@
     <ClInclude Include="ConeDetails.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="CalibrationToolOnly.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Media Include="cone1.mp4">

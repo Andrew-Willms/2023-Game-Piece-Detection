@@ -1,13 +1,13 @@
-#include <fmt/format.h>
-#include <networktables/NetworkTableInstance.h>
-#include <networktables/NetworkTable.h>
-#include <networktables/DoubleTopic.h>
+#include <chrono>
+#include <string>
 
 #include <opencv2/core.hpp>
 #include <opencv2/highgui.hpp>
 
-#include <chrono>
-#include <string>
+#include <fmt/format.h>
+#include <networktables/NetworkTableInstance.h>
+#include <networktables/NetworkTable.h>
+#include <networktables/DoubleTopic.h>
 
 #include "ConeDetails.h"
 #include "Contours.h"
@@ -21,7 +21,7 @@
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
-
+using namespace std::this_thread;
 
 
 
@@ -101,7 +101,7 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 	vector<vector<Point2i>> contours;
 	vector<Vec4i> hierarchy;
 
-	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE);
+	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_NONE);
 
 	const vector<vector<Point2i>> filteredContours = FilteredContours(contours, parameters.MinContourArea, parameters.MaxContourArea);
 
@@ -134,12 +134,15 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 		}
 
 		const bool continuationOfPreviousCorner = coneContour[i - 1] == cornerGroups.back().back();
-		const bool closeToPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 10;
+		const bool notTooFarFromPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 15;
+		const bool closeToPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 6;
 
-		if (!continuationOfPreviousCorner && !closeToPreviousPoint) {
-			cornerGroups.emplace_back();
+		if ((continuationOfPreviousCorner && notTooFarFromPreviousPoint) || closeToPreviousPoint) {
+			cornerGroups.back().push_back(point);
+			continue;
 		}
 
+		cornerGroups.emplace_back();
 		cornerGroups.back().push_back(point);
 	}
 
@@ -157,6 +160,42 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 	}
 }
 
+vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups, 
+	Point2i& highestPointInHighestCorner, Point2i& highestPointInSecondHighestCorner) {
+
+	vector<Point2i> northMostInEachCornerGroup{};
+
+	for (const vector<Point2i>& cornerGroup : cornerGroups) {
+
+		northMostInEachCornerGroup.push_back(cornerGroup[0]);
+
+		for (Point2i point : cornerGroup) {
+
+			if (point.y < northMostInEachCornerGroup.back().y) {
+				northMostInEachCornerGroup.pop_back();
+				northMostInEachCornerGroup.push_back(point);
+			}
+		}
+	}
+
+	highestPointInHighestCorner = northMostInEachCornerGroup[0].y < northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	highestPointInSecondHighestCorner = northMostInEachCornerGroup[0].y > northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	for (int i = 2; i < northMostInEachCornerGroup.size(); i++) {
+
+		if (northMostInEachCornerGroup[i].y < highestPointInSecondHighestCorner.y) {
+			highestPointInSecondHighestCorner = northMostInEachCornerGroup[i];
+		}
+
+		if (northMostInEachCornerGroup[i].y < highestPointInHighestCorner.y) {
+			const Point2i temp = highestPointInSecondHighestCorner;
+			highestPointInSecondHighestCorner = highestPointInHighestCorner;
+			highestPointInHighestCorner = temp;
+		}
+	}
+
+	return northMostInEachCornerGroup;
+}
+
 Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, const Point2i currentTipPosition) {
 
 	if (cornerGroups.size() < 4) {
@@ -165,33 +204,12 @@ Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, c
 
 	if (cornerGroups.size() == 4) {
 
-		vector<Point2i> corners{};
+		Point2i highestPoint;
+		Point2i secondHighestPoint;
+		GetHighestInEachCornerGroup(cornerGroups, highestPoint, secondHighestPoint);
 
-		corners.reserve(cornerGroups.size());
-		for (const vector<Point2i>& cornerGroup : cornerGroups) {
-			corners.push_back(AveragePointInGroup(cornerGroup));
-		}
-
-		Point2i highestPoint = corners[0];
-		Point2i secondHighestPoint = corners[1];
-
-		if (secondHighestPoint.y < highestPoint.y) {
-			const Point2i swap = highestPoint;
-			highestPoint = secondHighestPoint;
-			secondHighestPoint = swap;
-		}
-
-		for (const Point2i point : corners) {
-
-			if (point.y < secondHighestPoint.y && point.y > highestPoint.y) {
-				secondHighestPoint = point;
-				continue;
-			}
-
-			if (point.y < highestPoint.y) {
-				secondHighestPoint = highestPoint;
-				highestPoint = point;
-			}
+		if (highestPoint.y - secondHighestPoint.y < -5) {
+			return highestPoint;
 		}
 
 		return Point2i((highestPoint.x + secondHighestPoint.x) / 2, (highestPoint.y + secondHighestPoint.y) / 2);
@@ -217,24 +235,26 @@ Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, c
 		return highestPoint;
 	}
 
+	Point2i highestPoint;
+	Point2i secondNorthMost;
+	GetHighestInEachCornerGroup(cornerGroups, highestPoint, secondNorthMost);
+
+	if (highestPoint.y - secondNorthMost.y < -5) {
+		return highestPoint;
+	}
+
 	double sumX = 0;
 	int numberOfPoints = 0;
-	double highestYOnScreen = cornerGroups[0][0].y;
 
 	for (const vector<Point2i>& cornerGroup : cornerGroups) {
 
 		for (const Point2i point : cornerGroup) {
-
 			numberOfPoints++;
 			sumX += point.x;
-
-			if (point.y < highestYOnScreen) {
-				highestYOnScreen = point.y;
-			}
 		}
 	}
 
-	return Point2i(sumX / numberOfPoints, highestYOnScreen); 
+	return Point2i(sumX / numberOfPoints, highestPoint.y);
 }
 
 bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output, vector<vector<Point2i>>& cornerGroups) {
@@ -249,15 +269,17 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	GetConeCornerGroups(coneContour, centroid, farthestPoint, cornerGroups);
 	farthestPoint = AdjustTipFromCornerPoints(cornerGroups, farthestPoint);
 
-	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, parameters.CameraResolution, 
+	const Point2d centroidPosition = CalculateObjectDisplacement(centroid, parameters.CameraResolution,
 		parameters.CameraFov, parameters.CameraOffset, parameters.CameraAngle);
 
-	const Point2d tipPosition = CalculateObjectDisplacement(farthestPoint, parameters.CameraResolution, 
+	const Point2d tipPosition = CalculateObjectDisplacement(farthestPoint, parameters.CameraResolution,
 		parameters.CameraFov, parameters.CameraOffset, parameters.CameraAngle);
 
 	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
 
-	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, coneAngle);
+	const double adjustedConeAngle = ApplyConeTippedErrorCorrection(coneAngle, centroid, parameters.CameraAngle, parameters.CameraResolution, parameters.CameraFov);
+
+	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, adjustedConeAngle);
 	return true;
 }
 
@@ -282,6 +304,9 @@ void ConnectToNetworkTables() {
 int main() {
 
 	fmt::print("Starting cone detection.\n");
+	fmt::print("Waiting for 15 seconds for the rio to boot.\n");
+
+	sleep_for(seconds(15));
 
 	VideoCapture videoCapture(0);
 	if (!videoCapture.isOpened()) {

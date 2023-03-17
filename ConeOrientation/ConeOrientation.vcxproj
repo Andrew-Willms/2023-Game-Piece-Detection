@@ -136,6 +136,7 @@
     <ClCompile Include="Main.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="CalibrationToolOnly.h" />
     <ClInclude Include="Colors.h" />
     <ClInclude Include="ConeDetails.h" />
     <ClInclude Include="Contours.h" />

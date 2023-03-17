@@ -1,9 +1,14 @@
-#include <opencv2/core.hpp>
-#include <opencv2/highgui.hpp>
+#define SHOW_UI true;
+//#define FROM_WEBCAM true
+#define FROM_FILE "cone2.mp4"
+//#define PRINT_TIME true;
 
 #include <chrono>
 #include <iostream>
 #include <string>
+
+#include <opencv2/core.hpp>
+#include <opencv2/highgui.hpp>
 
 #include "Colors.h"
 #include "ConeDetails.h"
@@ -13,11 +18,7 @@
 #include "MultiImageWindow.h"
 #include "Trigonometry.h"
 #include "Points.h"
-
-#define SHOW_UI true;
-//#define FROM_WEBCAM true
-#define FROM_FILE "cone2.mp4"
-//#define PRINT_TIME true;
+#include "CalibrationToolOnly.h"
 
 using namespace cv;
 using namespace std;
@@ -156,7 +157,8 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 	}
 }
 
-vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups, Point2i& highest, Point2i& secondHighest) {
+vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups,
+	Point2i& highestPointInHighestCorner, Point2i& highestPointInSecondHighestCorner) {
 
 	vector<Point2i> northMostInEachCornerGroup{};
 
@@ -173,18 +175,18 @@ vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& corne
 		}
 	}
 
-	highest = northMostInEachCornerGroup[0].y < northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
-	secondHighest = northMostInEachCornerGroup[0].y > northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	highestPointInHighestCorner = northMostInEachCornerGroup[0].y < northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	highestPointInSecondHighestCorner = northMostInEachCornerGroup[0].y > northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
 	for (int i = 2; i < northMostInEachCornerGroup.size(); i++) {
 
-		if (northMostInEachCornerGroup[i].y < secondHighest.y) {
-			secondHighest = northMostInEachCornerGroup[i];
+		if (northMostInEachCornerGroup[i].y < highestPointInSecondHighestCorner.y) {
+			highestPointInSecondHighestCorner = northMostInEachCornerGroup[i];
 		}
 
-		if (northMostInEachCornerGroup[i].y < highest.y) {
-			const Point2i temp = secondHighest;
-			secondHighest = highest;
-			highest = temp;
+		if (northMostInEachCornerGroup[i].y < highestPointInHighestCorner.y) {
+			const Point2i temp = highestPointInSecondHighestCorner;
+			highestPointInSecondHighestCorner = highestPointInHighestCorner;
+			highestPointInHighestCorner = temp;
 		}
 	}
 
@@ -278,33 +280,10 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	return true;
 }
 
-void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour, const ConeDetails& coneDetails, MultiImageWindow& guiWindow) {
-
-	if (coneContour.empty()) {
-		guiWindow.AddImage(targetImage, 3, 2, "Contours");
-		return;
-	}
-
-	DrawContour(targetImage, coneContour, MAGENTA);
-
-	line(targetImage, coneDetails.GetTipCameraPosition(), coneDetails.GetCentroidCameraPosition(), RED);
-
-	const string text = "X:" + to_string(coneDetails.GetCentroidPosition().x) +
-						", Y:" + to_string(coneDetails.GetCentroidPosition().y) +
-						", A:" + to_string(coneDetails.GetAngle() * 180 / PI);
-
-	putText(targetImage, text, Point2i(20, 45), 0, 0.75, GREEN);
-
-	guiWindow.AddImage(targetImage, 3, 2, "Contours");
-}
-
 int main() {
 
 #ifdef FROM_WEBCAM
-	vector<VideoCapture> videoCaptures = vector<VideoCapture>();
-	for (int i = 0; i < 4; i++) {
-		videoCaptures.emplace_back(i);
-	}
+	vector<VideoCapture> videoCaptures = CreateWebCamVideoCaptures();
 #endif
 
 	Mat image, preProcessedImage, blackedOutImage;
@@ -316,31 +295,16 @@ int main() {
 #endif
 
 #ifdef FROM_FILE
-	Mat frame;
-	vector<Mat> frames;
-	VideoCapture videoCapture(FROM_FILE);
-	videoCapture.read(frame);
-
+	vector<Mat> frames = ReadAllFrames();
 	int currentFrameIndex = 0;
 	bool play = true;
-
-	while (frame.rows != 0) {
-		frames.push_back(frame.clone());
-		videoCapture.read(frame);
-	}
 #endif
 
 	while (true) {
 
-#ifdef FROM_WEBCAM
-		videoCaptures[parameters.CameraId].read(image);
-
-		if (image.rows == 0) {
-			image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
-		}
-#endif
-
-#ifdef FROM_FILE
+#if defined(FROM_WEBCAM)
+		ReadFromCameraOrRedIfError(videoCaptures, parameters, image);
+#elif defined(FROM_FILE)
 		image = frames[currentFrameIndex].clone();
 #endif
 
@@ -356,24 +320,9 @@ int main() {
 		ComputeConeDetails(coneContour, parameters, &coneDetails, cornerGroups);
 
 #ifdef SHOW_UI
-		circle(image, coneDetails.GetCentroidCameraPosition(),
-			DistanceBetweenPoints(coneDetails.GetCentroidCameraPosition(), coneDetails.GetTipCameraPosition()) * 0.85, GREEN, 2);
-
-		int colorIndex = 0;
-		for (const vector<Point2i>& cornerGroup : cornerGroups) {
-			for (Point2i point : cornerGroup) {
-				drawMarker(image, point, GetColorByIndex(colorIndex));
-			}
-			colorIndex++;
-		}
-
-		DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
+		DrawConeDetails(image, coneContour, coneDetails, cornerGroups, multiImageWindow);
 		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
 #endif
-
-  		if (cornerGroups.size() > 3) {
-			coneDetails = ConeDetails();
-		}
 
 #ifdef PRINT_TIME
 		time_point<steady_clock> endTime = high_resolution_clock::now();
@@ -381,49 +330,10 @@ int main() {
 		cout << duration.count() << endl;
 #endif
 
-#ifdef FROM_WEBCAM
+#if defined(FROM_WEBCAM)
 		waitKey(1);
+#elif defined(FROM_FILE)
+		ChangeFrameBasedOnPlayStateAndKeyPresses(play, currentFrameIndex, (int)frames.size());
 #endif
-
-
-#ifdef FROM_FILE
-		int keyPressed = waitKey(1);
-
-		// space
-		if (keyPressed == 32) {
-			play = !play;
-		}
-
-		if (play) {
-			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 1);
-			continue;
-		}
-
-		// >
-		if (keyPressed == 46 && currentFrameIndex + 1 < frames.size()) {
-			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 1);
-
-		// <
-		} else if (keyPressed == 44 && currentFrameIndex > 0) {
-			currentFrameIndex = max(0, currentFrameIndex - 1);
-
-		// '
-		} else if (keyPressed == 39 && currentFrameIndex + 1 < frames.size()) {
-			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 5);
-
-		// ;
-		} else if (keyPressed == 59 && currentFrameIndex > 0) {
-			currentFrameIndex = max(0, currentFrameIndex - 5);
-
-		// ]
-		} else if (keyPressed == 93 && currentFrameIndex + 1 < frames.size()) {
-			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 25);
-
-		// [
-		} else if (keyPressed == 91 && currentFrameIndex > 0) {
-			currentFrameIndex = max(0, currentFrameIndex - 25);
-		}
-#endif
-
 	}
 }
