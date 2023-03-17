@@ -146,7 +146,8 @@
     <ClInclude Include="Wrappers.h" />
   </ItemGroup>
   <ItemGroup>
-    <Media Include="cone.mp4" />
+    <Media Include="cone1.mp4" />
+    <Media Include="cone2.mp4" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -1,6 +1,7 @@
 ﻿#pragma once
 
 #define PI 3.14159
+#define MAXIMUM_ERROR_CAUSED_BY_CONE_TIP (19.14 * PI / 180)
 
 #include <opencv2/core/types.hpp>
 
@@ -107,4 +108,41 @@ inline double CalculateConeAngle(const Point2d coneCentroid, const Point2d coneT
 	const double angle = atan2(coneTipOffset.x, coneTipOffset.y);
 
 	return angle;
+}
+
+/**
+ * \brief Calculates the angle in radians of the cone relative to the robot compensating for the fact that the cone is 3d dimensional and
+ * the contour of the cone seen by the camera is not an flat image on the ground.
+ * \param coneAngle The angle in radians of the cone relative to the robot not compensating for the 3d nature of the situation.
+ * \param centroidCameraCoordinate The in camera coordinate of the centroid of the cone. The coordinate (0, 0) would be the top left corner of the image.
+ * \param cameraAngle A point with the X and Y members representing the yaw and pitch, respectively in radians of the camera relative to the robot.
+ * \param cameraResolution A point with the X and Y members representing the horizontal and vertical resolution of the camera, respectively.
+ * \param cameraFov A point with the X and Y members representing the horizontal and vertical FOV of the camera, respectively in radians.
+ * \return The angle in radians of the cone relative to the robot compensating for the fact that the cone is 3d dimensional and
+ * the contour of the cone seen by the camera is not an flat image on the ground.
+ */
+inline double ApplyConeTippedErrorCorrection(
+	const double coneAngle, 
+	const Point2i centroidCameraCoordinate,
+	const Point2i cameraAngle,
+	const Point2i cameraResolution, 
+	const Point2i cameraFov) {
+
+	const Point2d inCameraAngleToObject = AngleFromCameraCenter(centroidCameraCoordinate, cameraResolution, cameraFov);
+	const double pitchFromCamera = inCameraAngleToObject.y + cameraAngle.y;
+
+	const double pitchErrorFactor = cos(pitchFromCamera);
+
+	// coneAngle / -abs(coneAngle) evaluates to 1 with the opposite sign to the existing coneAngle
+	const double yawErrorFactorPreliminary = coneAngle / -abs(coneAngle) * sin(abs(coneAngle));
+
+	const double coneAngleErrorPreliminary = MAXIMUM_ERROR_CAUSED_BY_CONE_TIP * pitchErrorFactor * yawErrorFactorPreliminary;
+
+	const double adjustedConeAnglePreliminary = coneAngle + coneAngleErrorPreliminary;
+
+	const double yawErrorFactor = coneAngle / -abs(coneAngle) * sin(abs(adjustedConeAnglePreliminary));
+
+	const double coneAngleError = MAXIMUM_ERROR_CAUSED_BY_CONE_TIP * pitchErrorFactor * yawErrorFactor;
+
+	return coneAngle + coneAngleError;
 }

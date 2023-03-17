@@ -15,32 +15,32 @@ class Parameters {
 		int WindowWidth = 1912; //2039
 		int WindowHeight = 1009; //1080
 									
-		int WideHueMin = 10;
-		int WideHueMax = 35;
+		int WideHueMin = 0;// 10;
+		int WideHueMax = 140;// 35;
 		int WideSaturationMin = 0;
 		int WideSaturationMax = 255;
 		int WideValueMin = 200;
 		int WideValueMax = 255;
 		int WideMaskErosion = 3;
 		int WideMaskDilation = 3;
-		int WideBlurKernelSize = 30;
+		int WideBlurKernelSize = 14;// 30;
 		int WideBlurSigmaX = 5;
 		int WideBlurSigmaY = 0;
-		int WideMaskWeight = 50;
+		int WideMaskWeight = 25;// 50;
 
-		int NarrowHueMin = 130;
-		int NarrowHueMax = 140;
+		int NarrowHueMin = 10;// 130;
+		int NarrowHueMax = 35;// 140;
 		int NarrowSaturationMin = 0;
 		int NarrowSaturationMax = 255;
-		int NarrowValueMin = 200;
+		int NarrowValueMin = 210;// 200;
 		int NarrowValueMax = 255;
 		int NarrowMaskErosion = 3;
 		int NarrowMaskDilation = 3;
-		int NarrowBlurKernelSize = 30;
+		int NarrowBlurKernelSize = 14;// 30;
 		int NarrowBlurSigmaX = 5;
 		int NarrowBlurSigmaY = 0;
 
-		int MaskThreshold = 90;
+		int MaskThreshold = 120;// 90;
 
 		int CannyThreshold1 = 100;
 		int CannyThreshold2 = 150;
@@ -55,53 +55,55 @@ class Parameters {
 		const Point2d CameraFov = Point2d(54.18l / 180.0l * PI, 39.93l / 180.0l * PI); // 3.6mm ELP
 		//const Point2d CameraFov = Point2d(48.5l / 180.0l * PI, 36.0l / 180.0l * PI); // Microsoft Lifecam HD 3000
 		
-		Point3d CameraOffset = Point3d(0, -7, 52);
+		Point3d CameraOffset = Point3d(0, -6.75, 52);
 		Point2d CameraAngle = Point2d(0.0l / 180.0l * PI, -60.0l / 180.01 * PI);
 
 		void CreateTrackbars() {
 
-			namedWindow("Sliders", 100);
+			namedWindow("General", WINDOW_NORMAL);
+			namedWindow("Wide Mask", WINDOW_NORMAL);
+			namedWindow("Narrow Mask", WINDOW_NORMAL);
 
-			createTrackbar("CameraId", "Sliders", &CameraId, 3);
-			createTrackbar("Window W", "Sliders", &WindowWidth, 4000);
-			createTrackbar("Window H", "Sliders", &WindowHeight, 2000);
-			createTrackbar("Spacer", "Sliders", &WindowHeight, 2000);
+			createTrackbar("CameraId", "General", &CameraId, 3);
+			createTrackbar("Window W", "General", &WindowWidth, 4000);
+			createTrackbar("Window H", "General", &WindowHeight, 2000);
+			createTrackbar("Spacer", "General", &WindowHeight, 2000);
 
-			createTrackbar("W H Min", "Sliders", &WideHueMin, 179);
-			createTrackbar("W H Max", "Sliders", &WideHueMax, 179);
-			createTrackbar("W S Min", "Sliders", &WideSaturationMin, 255);
-			createTrackbar("W S Max", "Sliders", &WideSaturationMax, 255);
-			createTrackbar("W V Min", "Sliders", &WideValueMin, 255);
-			createTrackbar("W V Max", "Sliders", &WideValueMax, 255);
-			createTrackbar("W Erosion", "Sliders", &WideMaskErosion, 50);
-			createTrackbar("W Dilation", "Sliders", &WideMaskDilation, 50);
-			createTrackbar("W Blur", "Sliders", &WideBlurKernelSize, 50);
-			createTrackbar("W Blur SX", "Sliders", &WideBlurSigmaX, 30);
-			createTrackbar("W Blur SY", "Sliders", &WideBlurSigmaY, 30);
-			createTrackbar("W Weight", "Sliders", &WideMaskWeight, 100);
+			createTrackbar("W H Min", "Wide Mask", &WideHueMin, 179);
+			createTrackbar("W H Max", "Wide Mask", &WideHueMax, 179);
+			createTrackbar("W S Min", "Wide Mask", &WideSaturationMin, 255);
+			createTrackbar("W S Max", "Wide Mask", &WideSaturationMax, 255);
+			createTrackbar("W V Min", "Wide Mask", &WideValueMin, 255);
+			createTrackbar("W V Max", "Wide Mask", &WideValueMax, 255);
+			createTrackbar("W Erosion", "Wide Mask", &WideMaskErosion, 50);
+			createTrackbar("W Dilation", "Wide Mask", &WideMaskDilation, 50);
+			createTrackbar("W Blur", "Wide Mask", &WideBlurKernelSize, 50);
+			createTrackbar("W Blur SX", "Wide Mask", &WideBlurSigmaX, 30);
+			createTrackbar("W Blur SY", "Wide Mask", &WideBlurSigmaY, 30);
+			createTrackbar("W Weight", "Wide Mask", &WideMaskWeight, 100);
 
-			createTrackbar("N H Min", "Sliders", &NarrowHueMin, 179);
-			createTrackbar("N H Max", "Sliders", &NarrowHueMax, 179);
-			createTrackbar("N S Min", "Sliders", &NarrowSaturationMin, 255);
-			createTrackbar("N S Max", "Sliders", &NarrowSaturationMax, 255);
-			createTrackbar("N V Min", "Sliders", &NarrowValueMin, 255);
-			createTrackbar("N V Max", "Sliders", &NarrowValueMax, 255);
-			createTrackbar("N Dilation", "Sliders", &NarrowMaskDilation, 50);
-			createTrackbar("N Erosion", "Sliders", &NarrowMaskErosion, 50);
-			createTrackbar("N Blur", "Sliders", &NarrowBlurKernelSize, 50);
-			createTrackbar("N Blur SX", "Sliders", &NarrowBlurSigmaX, 30);
-			createTrackbar("N Blur SY", "Sliders", &NarrowBlurSigmaY, 30);
+			createTrackbar("N H Min", "Narrow Mask", &NarrowHueMin, 179);
+			createTrackbar("N H Max", "Narrow Mask", &NarrowHueMax, 179);
+			createTrackbar("N S Min", "Narrow Mask", &NarrowSaturationMin, 255);
+			createTrackbar("N S Max", "Narrow Mask", &NarrowSaturationMax, 255);
+			createTrackbar("N V Min", "Narrow Mask", &NarrowValueMin, 255);
+			createTrackbar("N V Max", "Narrow Mask", &NarrowValueMax, 255);
+			createTrackbar("N Dilation", "Narrow Mask", &NarrowMaskDilation, 50);
+			createTrackbar("N Erosion", "Narrow Mask", &NarrowMaskErosion, 50);
+			createTrackbar("N Blur", "Narrow Mask", &NarrowBlurKernelSize, 50);
+			createTrackbar("N Blur SX", "Narrow Mask", &NarrowBlurSigmaX, 30);
+			createTrackbar("N Blur SY", "Narrow Mask", &NarrowBlurSigmaY, 30);
 
-			createTrackbar("Threshold", "Sliders", &MaskThreshold, 255);
+			createTrackbar("Threshold", "General", &MaskThreshold, 255);
 
-			createTrackbar("Canny T1", "Sliders", &CannyThreshold1, 250);
-			createTrackbar("Canny T2", "Sliders", &CannyThreshold2, 250);
+			createTrackbar("Canny T1", "General", &CannyThreshold1, 250);
+			createTrackbar("Canny T2", "General", &CannyThreshold2, 250);
 
-			createTrackbar("C Dilation", "Sliders", &ContourDilation, 50);
-			createTrackbar("C Erosion", "Sliders", &ContourErosion, 50);
+			createTrackbar("C Dilation", "General", &ContourDilation, 50);
+			createTrackbar("C Erosion", "General", &ContourErosion, 50);
 
-			createTrackbar("Min Area", "Sliders", &MinContourArea, 100000);
-			createTrackbar("Max Area", "Sliders", &MaxContourArea, 100000);
+			createTrackbar("Min Area", "General", &MinContourArea, 100000);
+			createTrackbar("Max Area", "General", &MaxContourArea, 100000);
 		}
 
 };

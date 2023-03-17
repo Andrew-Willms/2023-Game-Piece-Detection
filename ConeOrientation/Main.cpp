@@ -15,8 +15,8 @@
 #include "Points.h"
 
 #define SHOW_UI true;
-#define FROM_WEBCAM true
-//#define FROM_FILE "cone.mp4"
+//#define FROM_WEBCAM true
+#define FROM_FILE "cone2.mp4"
 //#define PRINT_TIME true;
 
 using namespace cv;
@@ -97,7 +97,7 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 	vector<vector<Point2i>> contours;
 	vector<Vec4i> hierarchy;
 
-	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_SIMPLE);
+	findContours(sourceImage, contours, hierarchy, RETR_LIST, CHAIN_APPROX_NONE);
 
 	const vector<vector<Point2i>> filteredContours = FilteredContours(contours, parameters.MinContourArea, parameters.MaxContourArea);
 
@@ -130,12 +130,15 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 		}
 
 		const bool continuationOfPreviousCorner = coneContour[i - 1] == cornerGroups.back().back();
-		const bool closeToPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 10;
+		const bool notTooFarFromPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 15;
+		const bool closeToPreviousPoint = DistanceBetweenPoints(coneContour[i], cornerGroups.back().back()) < 6;
 
-		if (!continuationOfPreviousCorner && !closeToPreviousPoint) {
-			cornerGroups.emplace_back();
+		if ((continuationOfPreviousCorner && notTooFarFromPreviousPoint) || closeToPreviousPoint) {
+			cornerGroups.back().push_back(point);
+			continue;
 		}
 
+		cornerGroups.emplace_back();
 		cornerGroups.back().push_back(point);
 	}
 
@@ -153,6 +156,41 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 	}
 }
 
+vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups, Point2i& highest, Point2i& secondHighest) {
+
+	vector<Point2i> northMostInEachCornerGroup{};
+
+	for (const vector<Point2i>& cornerGroup : cornerGroups) {
+
+		northMostInEachCornerGroup.push_back(cornerGroup[0]);
+
+		for (Point2i point : cornerGroup) {
+
+			if (point.y < northMostInEachCornerGroup.back().y) {
+				northMostInEachCornerGroup.pop_back();
+				northMostInEachCornerGroup.push_back(point);
+			}
+		}
+	}
+
+	highest = northMostInEachCornerGroup[0].y < northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	secondHighest = northMostInEachCornerGroup[0].y > northMostInEachCornerGroup[1].y ? northMostInEachCornerGroup[0] : northMostInEachCornerGroup[1];
+	for (int i = 2; i < northMostInEachCornerGroup.size(); i++) {
+
+		if (northMostInEachCornerGroup[i].y < secondHighest.y) {
+			secondHighest = northMostInEachCornerGroup[i];
+		}
+
+		if (northMostInEachCornerGroup[i].y < highest.y) {
+			const Point2i temp = secondHighest;
+			secondHighest = highest;
+			highest = temp;
+		}
+	}
+
+	return northMostInEachCornerGroup;
+}
+
 Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, const Point2i currentTipPosition) {
 
 	if (cornerGroups.size() < 4) {
@@ -161,33 +199,12 @@ Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, c
 
 	if (cornerGroups.size() == 4) {
 
-		vector<Point2i> corners{};
+		Point2i highestPoint;
+		Point2i secondHighestPoint;
+		GetHighestInEachCornerGroup(cornerGroups, highestPoint, secondHighestPoint);
 
-		corners.reserve(cornerGroups.size());
-		for (const vector<Point2i>& cornerGroup : cornerGroups) {
-			corners.push_back(AveragePointInGroup(cornerGroup));
-		}
-
-		Point2i highestPoint = corners[0];
-		Point2i secondHighestPoint = corners[1];
-
-		if (secondHighestPoint.y < highestPoint.y) {
-			const Point2i swap = highestPoint;
-			highestPoint = secondHighestPoint;
-			secondHighestPoint = swap;
-		}
-
-		for (const Point2i point : corners) {
-
-			if (point.y < secondHighestPoint.y && point.y > highestPoint.y) {
-				secondHighestPoint = point;
-				continue;
-			}
-
-			if (point.y < highestPoint.y) {
-				secondHighestPoint = highestPoint;
-				highestPoint = point;
-			}
+		if (highestPoint.y - secondHighestPoint.y < -5) {
+			return highestPoint;
 		}
 
 		return Point2i((highestPoint.x + secondHighestPoint.x) / 2, (highestPoint.y + secondHighestPoint.y) / 2);
@@ -213,24 +230,26 @@ Point2i AdjustTipFromCornerPoints(const vector<vector<Point2i>>& cornerGroups, c
 		return highestPoint;
 	}
 
+	Point2i highestPoint;
+	Point2i secondNorthMost;
+	GetHighestInEachCornerGroup(cornerGroups, highestPoint, secondNorthMost);
+
+	if (highestPoint.y - secondNorthMost.y < -5) {
+		return highestPoint;
+	}
+
 	double sumX = 0;
 	int numberOfPoints = 0;
-	double highestYOnScreen = cornerGroups[0][0].y;
 
 	for (const vector<Point2i>& cornerGroup : cornerGroups) {
 
 		for (const Point2i point : cornerGroup) {
-
 			numberOfPoints++;
 			sumX += point.x;
-
-			if (point.y < highestYOnScreen) {
-				highestYOnScreen = point.y;
-			}
 		}
 	}
 
-	return Point2i(sumX / numberOfPoints, highestYOnScreen); 
+	return Point2i(sumX / numberOfPoints, highestPoint.y);
 }
 
 bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& parameters, ConeDetails* output, vector<vector<Point2i>>& cornerGroups) {
@@ -253,7 +272,9 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 
 	const double coneAngle = CalculateConeAngle(centroidPosition, tipPosition);
 
-	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, coneAngle);
+	const double adjustedConeAngle = ApplyConeTippedErrorCorrection(coneAngle, centroid, parameters.CameraAngle, parameters.CameraResolution, parameters.CameraFov);
+
+	*output = ConeDetails(centroidPosition, tipPosition, centroid, farthestPoint, adjustedConeAngle);
 	return true;
 }
 
@@ -297,10 +318,11 @@ int main() {
 #ifdef FROM_FILE
 	Mat frame;
 	vector<Mat> frames;
-	int currentFrameIndex = 0;
-	VideoCapture videoCapture("cone.mp4");
-
+	VideoCapture videoCapture(FROM_FILE);
 	videoCapture.read(frame);
+
+	int currentFrameIndex = 0;
+	bool play = true;
 
 	while (frame.rows != 0) {
 		frames.push_back(frame.clone());
@@ -344,9 +366,7 @@ int main() {
 			}
 			colorIndex++;
 		}
-#endif
 
-#ifdef SHOW_UI
 		DrawConeDetails(image, coneContour, coneDetails, multiImageWindow);
 		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
 #endif
@@ -369,21 +389,37 @@ int main() {
 #ifdef FROM_FILE
 		int keyPressed = waitKey(1);
 
+		// space
+		if (keyPressed == 32) {
+			play = !play;
+		}
+
+		if (play) {
+			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 1);
+			continue;
+		}
+
+		// >
 		if (keyPressed == 46 && currentFrameIndex + 1 < frames.size()) {
-			currentFrameIndex++;
+			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 1);
 
+		// <
 		} else if (keyPressed == 44 && currentFrameIndex > 0) {
-			currentFrameIndex--;
+			currentFrameIndex = max(0, currentFrameIndex - 1);
 
+		// '
 		} else if (keyPressed == 39 && currentFrameIndex + 1 < frames.size()) {
 			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 5);
 
+		// ;
 		} else if (keyPressed == 59 && currentFrameIndex > 0) {
 			currentFrameIndex = max(0, currentFrameIndex - 5);
 
+		// ]
 		} else if (keyPressed == 93 && currentFrameIndex + 1 < frames.size()) {
 			currentFrameIndex = min((int)frames.size() - 1, currentFrameIndex + 25);
 
+		// [
 		} else if (keyPressed == 91 && currentFrameIndex > 0) {
 			currentFrameIndex = max(0, currentFrameIndex - 25);
 		}

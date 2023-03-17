@@ -42,7 +42,10 @@
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <Media Include="cone.mp4">
+    <Media Include="cone1.mp4">
+      <Filter>Resource Files</Filter>
+    </Media>
+    <Media Include="cone2.mp4">
       <Filter>Resource Files</Filter>
     </Media>
   </ItemGroup>
