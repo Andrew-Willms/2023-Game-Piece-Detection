@@ -21,7 +21,6 @@
 using namespace cv;
 using namespace std;
 using namespace std::chrono;
-using namespace std::this_thread;
 
 
 
@@ -305,8 +304,6 @@ int main() {
 
 	fmt::print("Starting cone detection.\n");
 	fmt::print("Waiting for 15 seconds for the rio to boot.\n");
-
-	sleep_for(seconds(15));
 
 	VideoCapture videoCapture(0);
 	if (!videoCapture.isOpened()) {
