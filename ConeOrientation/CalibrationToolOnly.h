@@ -10,7 +10,7 @@ inline void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour
 	const vector<vector<Point2i>>& cornerGroups, MultiImageWindow& guiWindow) {
 
 	if (coneContour.empty()) {
-		guiWindow.AddImage(targetImage, 3, 2, "Contours");
+		guiWindow.AddImage(targetImage, 1, 2, "Contours");
 		return;
 	}
 
@@ -40,7 +40,7 @@ inline void DrawConeDetails(Mat& targetImage, const vector<Point2i>& coneContour
 
 	putText(targetImage, text, Point2i(20, 45), 0, 0.75, GREEN);
 
-	guiWindow.AddImage(targetImage, 3, 2, "Contours");
+	guiWindow.AddImage(targetImage, 1, 2, "Contours");
 }
 
 #ifdef FROM_WEBCAM
@@ -92,6 +92,10 @@ inline void ChangeFrameBasedOnPlayStateAndKeyPresses(bool& play, int& currentFra
 	// space
 	if (keyPressed == 32) {
 		play = !play;
+	}
+
+	if (currentFrameIndex == framesInFile) {
+		play = false;
 	}
 
 	if (play) {

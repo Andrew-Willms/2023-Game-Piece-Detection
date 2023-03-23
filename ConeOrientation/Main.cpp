@@ -1,7 +1,7 @@
 #define SHOW_UI true;
 //#define FROM_WEBCAM true
-#define FROM_FILE "cone2.mp4"
-//#define PRINT_TIME true;
+#define FROM_FILE "Calibration Videos/PAC 1.mp4"
+#define PRINT_TIME true;
 
 #include <chrono>
 #include <iostream>
@@ -35,61 +35,49 @@ void CeilingToOdd(int& number) {
 
 void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters, MultiImageWindow& guiWindow) {
 
-	Mat imageHsv, masksMerged, masksMergedDigitized, edges, contoursDilated, contoursEroded;
-	Mat wideMask, wideMaskEroded, wideMaskDilated, wideMaskBlurred;
-	Mat narrowMask, narrowMaskDilated, narrowMaskEroded, narrowMaskBlurred;
+	Mat imageHsv, masksMerged, masksMergedDigitized, edges, contoursDilated;
+	Mat middleMask, highlightMask, lowLightMask;
 
-	CeilingToOdd(parameters.NarrowBlurKernelSize);
-	CeilingToOdd(parameters.WideBlurKernelSize);
+	CeilingToOdd(parameters.TotalMaskBlur);
 	CeilingToOdd(parameters.ContourDilation);
-	CeilingToOdd(parameters.ContourErosion);
 
-	Scalar wideLowerColorLimit = Scalar(parameters.WideHueMin, parameters.WideSaturationMin, parameters.WideValueMin);
-	Scalar wideUpperColorLimit = Scalar(parameters.WideHueMax, parameters.WideSaturationMax, parameters.WideValueMax);
+	Scalar middleLowerColorLimit = Scalar(parameters.MiddleHueMin, parameters.MiddleSaturationMin, parameters.MiddleValueMin);
+	Scalar middleUpperColorLimit = Scalar(parameters.MiddleHueMax, parameters.MiddleSaturationMax, parameters.MiddleValueMax);
 
-	Scalar narrowLowerColorLimit = Scalar(parameters.NarrowHueMin, parameters.NarrowSaturationMin, parameters.NarrowValueMin);
-	Scalar narrowUpperColorLimit = Scalar(parameters.NarrowHueMax, parameters.NarrowSaturationMax, parameters.NarrowValueMax);
+	Scalar highlightLowerColorLimit = Scalar(parameters.HighlightHueMin, parameters.HighlightSaturationMin, parameters.HighlightValueMin);
+	Scalar highlightUpperColorLimit = Scalar(parameters.HighlightHueMax, parameters.HighlightSaturationMax, parameters.HighlightValueMax);
+
+	Scalar lowLightLowerColorLimit = Scalar(parameters.LowLightHueMin, parameters.LowLightSaturationMin, parameters.LowLightValueMin);
+	Scalar lowLightUpperColorLimit = Scalar(parameters.LowLightHueMax, parameters.LowLightSaturationMax, parameters.LowLightValueMax);
 
 	cvtColor(sourceImage, imageHsv, COLOR_BGR2HSV);
-	inRange(imageHsv, wideLowerColorLimit, wideUpperColorLimit, wideMask);
-	inRange(imageHsv, narrowLowerColorLimit, narrowUpperColorLimit, narrowMask);
+	inRange(imageHsv, middleLowerColorLimit, middleUpperColorLimit, middleMask);
+	inRange(imageHsv, highlightLowerColorLimit, highlightUpperColorLimit, highlightMask);
+	inRange(imageHsv, lowLightLowerColorLimit, lowLightUpperColorLimit, lowLightMask);
 
-	SquareErode(wideMask, wideMaskEroded, parameters.WideMaskErosion);
-	SquareDilate(wideMaskEroded, wideMaskDilated, parameters.WideMaskDilation);
+	masksMerged = parameters.MiddleMaskWeight / 100.0 * middleMask + parameters.HighlightMaskWeight / 100.0 * highlightMask + parameters.LowLightMaskWeight / 100.0 * lowLightMask;
 
-	SquareDilate(narrowMask, narrowMaskDilated, parameters.NarrowMaskDilation);
-	SquareErode(narrowMaskDilated, narrowMaskEroded, parameters.NarrowMaskErosion);
+	Mat maskBlurred;
+	GaussianBlur(masksMerged, maskBlurred, Size(parameters.TotalMaskBlur, parameters.TotalMaskBlur), 5, 0);
 
-	GaussianBlur(wideMaskDilated, wideMaskBlurred, Size(parameters.WideBlurKernelSize, parameters.WideBlurKernelSize), parameters.WideBlurSigmaX, parameters.WideBlurSigmaY);
-	GaussianBlur(narrowMaskEroded, narrowMaskBlurred, Size(parameters.NarrowBlurKernelSize, parameters.NarrowBlurKernelSize), parameters.NarrowBlurSigmaX, parameters.NarrowBlurSigmaY);
-
-	masksMerged = parameters.WideMaskWeight / 100.0 * wideMaskBlurred + (100 - parameters.WideMaskWeight) / 100.0 * narrowMaskBlurred;
-
-	inRange(masksMerged, parameters.MaskThreshold, Scalar(255), masksMergedDigitized);
+	inRange(maskBlurred, parameters.MaskThreshold, Scalar(255), masksMergedDigitized);
 
 	Canny(masksMergedDigitized, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
 
 	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
-	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
 
-	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, WHITE);
+	copyMakeBorder(contoursDilated, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, Scalar(255, 255, 255));
 
 #ifdef SHOW_UI
-	guiWindow.AddImage(wideMask, 0, 0, "W Mask");
-	guiWindow.AddImage(wideMaskEroded, 1, 0, "W Mask Eroded");
-	guiWindow.AddImage(wideMaskDilated, 2, 0, "W Mask Dilated");
-	guiWindow.AddImage(wideMaskBlurred, 3, 0, "W Mask Blurred");
+	guiWindow.AddImage(middleMask, 0, 0, "W Mask");
+	guiWindow.AddImage(highlightMask, 1, 0, "N Mask");
+	guiWindow.AddImage(lowLightMask, 2, 0, "L Mask");
 
-	guiWindow.AddImage(narrowMask, 0, 1, "N Mask");
-	guiWindow.AddImage(narrowMaskDilated, 1, 1, "N Mask Dilated");
-	guiWindow.AddImage(narrowMaskEroded, 2, 1, "N Mask Eroded");
-	guiWindow.AddImage(narrowMaskBlurred, 3, 1, "N Mask Blurred");
+	guiWindow.AddImage(masksMerged, 0, 1, "Masks Merged");
+	guiWindow.AddImage(maskBlurred, 1, 1, "Blurred");
+	guiWindow.AddImage(masksMergedDigitized, 2, 1, "Digitized Mask");
 
-	guiWindow.AddImage(masksMerged, 0, 2, "Masks Merged");
-	guiWindow.AddImage(masksMergedDigitized, 1, 2, "Digitized Mask");
-	//guiWindow.AddImage(edges, 0, 1, "Canny");
-	//guiWindow.AddImage(contoursDilated, 1, 1, "Dilated");
-	guiWindow.AddImage(targetImage, 2, 2, "Eroded");
+	guiWindow.AddImage(targetImage, 0, 2, "Eroded");
 #endif
 }
 
@@ -106,7 +94,7 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 		return vector<Point2i>();
 	}
 
-	return *MostCentralAndSmallestContour(filteredContours, parameters.CameraResolution);
+	return *MostCentralContour(filteredContours, parameters.CameraResolution);
 }
 
 void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centroidCameraPosition, 
@@ -287,7 +275,7 @@ int main() {
 #endif
 
 	Mat image, preProcessedImage, blackedOutImage;
-	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 4, 3);
+	MultiImageWindow multiImageWindow = MultiImageWindow("Pipeline", 3, 3);
 	Parameters parameters = Parameters();
 
 #ifdef SHOW_UI
@@ -297,7 +285,7 @@ int main() {
 #ifdef FROM_FILE
 	vector<Mat> frames = ReadAllFrames();
 	int currentFrameIndex = 0;
-	bool play = true;
+	bool play = false;
 #endif
 
 	while (true) {
@@ -314,20 +302,25 @@ int main() {
 
 		PreProcessImage(image, preProcessedImage, parameters, multiImageWindow);
 
+#ifdef PRINT_TIME
+		time_point<steady_clock> preProcessEndTime = high_resolution_clock::now();
+#endif
+
 		ConeDetails coneDetails{};
 		vector<vector<Point2i>> cornerGroups{};
 		vector<Point2i> coneContour = FindConeContour(preProcessedImage, parameters);
 		ComputeConeDetails(coneContour, parameters, &coneDetails, cornerGroups);
 
+#ifdef PRINT_TIME
+		time_point<steady_clock> endTime = high_resolution_clock::now();
+		duration<double, milli> preProcessTime = preProcessEndTime - startTime;
+		duration<double, milli> duration = endTime - startTime;
+		cout << "Total Process Time: " << duration.count() << ", PreProcess Time: " << preProcessTime.count() << endl;
+#endif
+
 #ifdef SHOW_UI
 		DrawConeDetails(image, coneContour, coneDetails, cornerGroups, multiImageWindow);
 		multiImageWindow.Show(parameters.WindowWidth, parameters.WindowHeight);
-#endif
-
-#ifdef PRINT_TIME
-		time_point<steady_clock> endTime = high_resolution_clock::now();
-		duration<double, milli> duration = endTime - startTime;
-		cout << duration.count() << endl;
 #endif
 
 #if defined(FROM_WEBCAM)

@@ -55,44 +55,38 @@ void CeilingToOdd(int& number) {
 
 void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parameters) {
 
-	Mat imageHsv, masksMerged, masksMergedDigitized, edges, contoursDilated, contoursEroded;
-	Mat wideMask, wideMaskEroded, wideMaskDilated, wideMaskBlurred;
-	Mat narrowMask, narrowMaskDilated, narrowMaskEroded, narrowMaskBlurred;
+	Mat imageHsv, masksMerged, masksMergedDigitized, edges, contoursDilated;
+	Mat middleMask, highlightMask, lowLightMask;
 
-	CeilingToOdd(parameters.NarrowBlurKernelSize);
-	CeilingToOdd(parameters.WideBlurKernelSize);
+	CeilingToOdd(parameters.TotalMaskBlur);
 	CeilingToOdd(parameters.ContourDilation);
-	CeilingToOdd(parameters.ContourErosion);
 
-	Scalar wideLowerColorLimit = Scalar(parameters.WideHueMin, parameters.WideSaturationMin, parameters.WideValueMin);
-	Scalar wideUpperColorLimit = Scalar(parameters.WideHueMax, parameters.WideSaturationMax, parameters.WideValueMax);
+	Scalar middleLowerColorLimit = Scalar(parameters.MiddleHueMin, parameters.MiddleSaturationMin, parameters.MiddleValueMin);
+	Scalar middleUpperColorLimit = Scalar(parameters.MiddleHueMax, parameters.MiddleSaturationMax, parameters.MiddleValueMax);
 
-	Scalar narrowLowerColorLimit = Scalar(parameters.NarrowHueMin, parameters.NarrowSaturationMin, parameters.NarrowValueMin);
-	Scalar narrowUpperColorLimit = Scalar(parameters.NarrowHueMax, parameters.NarrowSaturationMax, parameters.NarrowValueMax);
+	Scalar highlightLowerColorLimit = Scalar(parameters.HighlightHueMin, parameters.HighlightSaturationMin, parameters.HighlightValueMin);
+	Scalar highlightUpperColorLimit = Scalar(parameters.HighlightHueMax, parameters.HighlightSaturationMax, parameters.HighlightValueMax);
+
+	Scalar lowLightLowerColorLimit = Scalar(parameters.LowLightHueMin, parameters.LowLightSaturationMin, parameters.LowLightValueMin);
+	Scalar lowLightUpperColorLimit = Scalar(parameters.LowLightHueMax, parameters.LowLightSaturationMax, parameters.LowLightValueMax);
 
 	cvtColor(sourceImage, imageHsv, COLOR_BGR2HSV);
-	inRange(imageHsv, wideLowerColorLimit, wideUpperColorLimit, wideMask);
-	inRange(imageHsv, narrowLowerColorLimit, narrowUpperColorLimit, narrowMask);
+	inRange(imageHsv, middleLowerColorLimit, middleUpperColorLimit, middleMask);
+	inRange(imageHsv, highlightLowerColorLimit, highlightUpperColorLimit, highlightMask);
+	inRange(imageHsv, lowLightLowerColorLimit, lowLightUpperColorLimit, lowLightMask);
 
-	SquareErode(wideMask, wideMaskEroded, parameters.WideMaskErosion);
-	SquareDilate(wideMaskEroded, wideMaskDilated, parameters.WideMaskDilation);
+	masksMerged = parameters.MiddleMaskWeight / 100.0 * middleMask + parameters.HighlightMaskWeight / 100.0 * highlightMask + parameters.LowLightMaskWeight / 100.0 * lowLightMask;
 
-	SquareDilate(narrowMask, narrowMaskDilated, parameters.NarrowMaskDilation);
-	SquareErode(narrowMaskDilated, narrowMaskEroded, parameters.NarrowMaskErosion);
+	Mat maskBlurred;
+	GaussianBlur(masksMerged, maskBlurred, Size(parameters.TotalMaskBlur, parameters.TotalMaskBlur), 5, 0);
 
-	GaussianBlur(wideMaskDilated, wideMaskBlurred, Size(parameters.WideBlurKernelSize, parameters.WideBlurKernelSize), parameters.WideBlurSigmaX, parameters.WideBlurSigmaY);
-	GaussianBlur(narrowMaskEroded, narrowMaskBlurred, Size(parameters.NarrowBlurKernelSize, parameters.NarrowBlurKernelSize), parameters.NarrowBlurSigmaX, parameters.NarrowBlurSigmaY);
-
-	masksMerged = parameters.WideMaskWeight / 100.0 * wideMaskBlurred + (100 - parameters.WideMaskWeight) / 100.0 * narrowMaskBlurred;
-
-	inRange(masksMerged, parameters.MaskThreshold, Scalar(255), masksMergedDigitized);
+	inRange(maskBlurred, parameters.MaskThreshold, Scalar(255), masksMergedDigitized);
 
 	Canny(masksMergedDigitized, edges, parameters.CannyThreshold1, parameters.CannyThreshold2);
 
 	SquareDilate(edges, contoursDilated, parameters.ContourDilation);
-	SquareErode(contoursDilated, contoursEroded, parameters.ContourErosion);
 
-	copyMakeBorder(contoursEroded, targetImage, 1, 1, 1, 1, BORDER_CONSTANT);
+	copyMakeBorder(contoursDilated, targetImage, 1, 1, 1, 1, BORDER_CONSTANT, Scalar(255, 255, 255));
 }
 
 vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters parameters) {
@@ -108,10 +102,10 @@ vector<Point2i> FindConeContour(const Mat& sourceImage, const Parameters paramet
 		return vector<Point2i>();
 	}
 
-	return *MostCentralAndSmallestContour(filteredContours, parameters.CameraResolution);
+	return *MostCentralContour(filteredContours, parameters.CameraResolution);
 }
 
-void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centroidCameraPosition, 
+void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centroidCameraPosition,
 	const Point2i farthestPointCameraPosition, vector<vector<Point2i>>& cornerGroups) {
 
 	const double distanceToTip = DistanceBetweenPoints(centroidCameraPosition, farthestPointCameraPosition);
@@ -159,7 +153,7 @@ void GetConeCornerGroups(const vector<Point2i>& coneContour, const Point2i centr
 	}
 }
 
-vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups, 
+vector<Point2i> GetHighestInEachCornerGroup(const vector<vector<Point2i>>& cornerGroups,
 	Point2i& highestPointInHighestCorner, Point2i& highestPointInSecondHighestCorner) {
 
 	vector<Point2i> northMostInEachCornerGroup{};
@@ -282,24 +276,6 @@ bool ComputeConeDetails(const vector<Point2i>& coneContour, const Parameters& pa
 	return true;
 }
 
-void ConnectToNetworkTables() {
-
-#ifdef PRINT_DATA
-	fmt::print("Connecting to network tables.\n");
-#endif
-
-	inst = nt::NetworkTableInstance::GetDefault();
-	auto table = inst.GetTable("rpi");
-	//auto pubOp = new PubSubOption();
-	inst.StartClient4("example client");
-	inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
-	inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
-	dblPubFound = table->GetDoubleTopic("cone_found").Publish();
-	dblPubAngle = table->GetDoubleTopic("cone_angle").Publish();
-	dblPubX = table->GetDoubleTopic("cone_x").Publish();
-	dblPubY = table->GetDoubleTopic("cone_y").Publish();
-}
-
 int main() {
 
 	fmt::print("Starting cone detection.\n");
@@ -314,21 +290,21 @@ int main() {
 	Mat image, preProcessedImage;
 
 	Parameters parameters = Parameters();
-	CeilingToOdd(parameters.WideBlurKernelSize);
-	CeilingToOdd(parameters.NarrowBlurKernelSize);
+	CeilingToOdd(parameters.TotalMaskBlur);
 	CeilingToOdd(parameters.ContourDilation);
-	CeilingToOdd(parameters.ContourErosion);
 
-	ConnectToNetworkTables();
+	inst = nt::NetworkTableInstance::GetDefault();
+	auto table = inst.GetTable("rpi");
+	//auto pubOp = new PubSubOption();
+	inst.StartClient4("example client");
+	inst.SetServerTeam(4678);  // where TEAM=190, 294, etc, or use inst.setServer("hostname") or similar
+	inst.StartDSClient();  // recommended if running on DS computer; this gets the robot IP from the DS
+	dblPubFound = table->GetDoubleTopic("cone_found").Publish();
+	dblPubAngle = table->GetDoubleTopic("cone_angle").Publish();
+	dblPubX = table->GetDoubleTopic("cone_x").Publish();
+	dblPubY = table->GetDoubleTopic("cone_y").Publish();
 
-	int iterationCount = 0;
 	while (true) {
-
-		iterationCount++;
-
-		if (iterationCount % 50 == 0) {
-			ConnectToNetworkTables();
-		}
 
 #ifdef PRINT_DATA
 		time_point<system_clock> startTime = high_resolution_clock::now();

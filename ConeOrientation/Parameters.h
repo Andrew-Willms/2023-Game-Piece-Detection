@@ -12,41 +12,40 @@ class Parameters {
 	public:
 
 		int CameraId = 0;
-		int WindowWidth = 1912; //2039
-		int WindowHeight = 1009; //1080
-									
-		int WideHueMin = 0;// 10;
-		int WideHueMax = 140;// 35;
-		int WideSaturationMin = 0;
-		int WideSaturationMax = 255;
-		int WideValueMin = 200;
-		int WideValueMax = 255;
-		int WideMaskErosion = 3;
-		int WideMaskDilation = 3;
-		int WideBlurKernelSize = 14;// 30;
-		int WideBlurSigmaX = 5;
-		int WideBlurSigmaY = 0;
-		int WideMaskWeight = 25;// 50;
+		int WindowWidth = 1912;// 2039;
+		int WindowHeight = 1080;// 1009;
 
-		int NarrowHueMin = 10;// 130;
-		int NarrowHueMax = 35;// 140;
-		int NarrowSaturationMin = 0;
-		int NarrowSaturationMax = 255;
-		int NarrowValueMin = 210;// 200;
-		int NarrowValueMax = 255;
-		int NarrowMaskErosion = 3;
-		int NarrowMaskDilation = 3;
-		int NarrowBlurKernelSize = 14;// 30;
-		int NarrowBlurSigmaX = 5;
-		int NarrowBlurSigmaY = 0;
+		int MiddleHueMin = 8;
+		int MiddleHueMax = 30;
+		int MiddleSaturationMin = 150;
+		int MiddleSaturationMax = 255;
+		int MiddleValueMin = 130;
+		int MiddleValueMax = 255;
+		int MiddleMaskWeight = 100;
 
-		int MaskThreshold = 120;// 90;
+		int HighlightHueMin = 4;
+		int HighlightHueMax = 30;
+		int HighlightSaturationMin = 40;
+		int HighlightSaturationMax = 255;
+		int HighlightValueMin = 240;
+		int HighlightValueMax = 255;
+		int HighlightMaskWeight = 100;
+
+		int LowLightHueMin = 3;
+		int LowLightHueMax = 31;
+		int LowLightSaturationMin = 255;
+		int LowLightSaturationMax = 255;
+		int LowLightValueMin = 104;
+		int LowLightValueMax = 255;
+		int LowLightMaskWeight = 100;
+										
+		int MaskThreshold = 120;
+		int TotalMaskBlur = 7;
 
 		int CannyThreshold1 = 100;
 		int CannyThreshold2 = 150;
 								
 		int ContourDilation = 3;
-		int ContourErosion = 0;
 								
 		int MinContourArea = 2750;
 		int MaxContourArea = 9250;
@@ -64,47 +63,44 @@ class Parameters {
 			namedWindow("General", WINDOW_NORMAL);
 			namedWindow("Wide Mask", WINDOW_NORMAL);
 			namedWindow("Narrow Mask", WINDOW_NORMAL);
+			namedWindow("Low Light Mask", WINDOW_NORMAL);
 
 			createTrackbar("CameraId", "General", &CameraId, 3);
 			createTrackbar("Window W", "General", &WindowWidth, 4000);
 			createTrackbar("Window H", "General", &WindowHeight, 2000);
 			createTrackbar("Spacer", "General", &WindowHeight, 2000);
 
-			createTrackbar("W H Min", "Wide Mask", &WideHueMin, 179);
-			createTrackbar("W H Max", "Wide Mask", &WideHueMax, 179);
-			createTrackbar("W S Min", "Wide Mask", &WideSaturationMin, 255);
-			createTrackbar("W S Max", "Wide Mask", &WideSaturationMax, 255);
-			createTrackbar("W V Min", "Wide Mask", &WideValueMin, 255);
-			createTrackbar("W V Max", "Wide Mask", &WideValueMax, 255);
-			createTrackbar("W Erosion", "Wide Mask", &WideMaskErosion, 50);
-			createTrackbar("W Dilation", "Wide Mask", &WideMaskDilation, 50);
-			createTrackbar("W Blur", "Wide Mask", &WideBlurKernelSize, 50);
-			createTrackbar("W Blur SX", "Wide Mask", &WideBlurSigmaX, 30);
-			createTrackbar("W Blur SY", "Wide Mask", &WideBlurSigmaY, 30);
-			createTrackbar("W Weight", "Wide Mask", &WideMaskWeight, 100);
+			createTrackbar("M H Min", "Wide Mask", &MiddleHueMin, 179);
+			createTrackbar("M H Max", "Wide Mask", &MiddleHueMax, 179);
+			createTrackbar("M S Min", "Wide Mask", &MiddleSaturationMin, 255);
+			createTrackbar("M S Max", "Wide Mask", &MiddleSaturationMax, 255);
+			createTrackbar("M V Min", "Wide Mask", &MiddleValueMin, 255);
+			createTrackbar("M V Max", "Wide Mask", &MiddleValueMax, 255);
+			createTrackbar("M Weight", "Wide Mask", &MiddleMaskWeight, 100);
 
-			createTrackbar("N H Min", "Narrow Mask", &NarrowHueMin, 179);
-			createTrackbar("N H Max", "Narrow Mask", &NarrowHueMax, 179);
-			createTrackbar("N S Min", "Narrow Mask", &NarrowSaturationMin, 255);
-			createTrackbar("N S Max", "Narrow Mask", &NarrowSaturationMax, 255);
-			createTrackbar("N V Min", "Narrow Mask", &NarrowValueMin, 255);
-			createTrackbar("N V Max", "Narrow Mask", &NarrowValueMax, 255);
-			createTrackbar("N Dilation", "Narrow Mask", &NarrowMaskDilation, 50);
-			createTrackbar("N Erosion", "Narrow Mask", &NarrowMaskErosion, 50);
-			createTrackbar("N Blur", "Narrow Mask", &NarrowBlurKernelSize, 50);
-			createTrackbar("N Blur SX", "Narrow Mask", &NarrowBlurSigmaX, 30);
-			createTrackbar("N Blur SY", "Narrow Mask", &NarrowBlurSigmaY, 30);
+			createTrackbar("H H Min", "Narrow Mask", &HighlightHueMin, 179);
+			createTrackbar("H H Max", "Narrow Mask", &HighlightHueMax, 179);
+			createTrackbar("H S Min", "Narrow Mask", &HighlightSaturationMin, 255);
+			createTrackbar("H S Max", "Narrow Mask", &HighlightSaturationMax, 255);
+			createTrackbar("H V Min", "Narrow Mask", &HighlightValueMin, 255);
+			createTrackbar("H V Max", "Narrow Mask", &HighlightValueMax, 255);
+			createTrackbar("H Weight", "Narrow Mask", &HighlightMaskWeight, 100);
+
+			createTrackbar("L H Min", "Low Light Mask", &LowLightHueMin, 179);
+			createTrackbar("L H Max", "Low Light Mask", &LowLightHueMax, 179);
+			createTrackbar("L S Min", "Low Light Mask", &LowLightSaturationMin, 255);
+			createTrackbar("L S Max", "Low Light Mask", &LowLightSaturationMax, 255);
+			createTrackbar("L V Min", "Low Light Mask", &LowLightValueMin, 255);
+			createTrackbar("L V Max", "Low Light Mask", &LowLightValueMax, 255);
+			createTrackbar("L Weight", "Low Light Mask", &LowLightMaskWeight, 100);
 
 			createTrackbar("Threshold", "General", &MaskThreshold, 255);
 
-			createTrackbar("Canny T1", "General", &CannyThreshold1, 250);
-			createTrackbar("Canny T2", "General", &CannyThreshold2, 250);
-
 			createTrackbar("C Dilation", "General", &ContourDilation, 50);
-			createTrackbar("C Erosion", "General", &ContourErosion, 50);
 
 			createTrackbar("Min Area", "General", &MinContourArea, 100000);
 			createTrackbar("Max Area", "General", &MaxContourArea, 100000);
+			createTrackbar("Mask Blur", "General", &TotalMaskBlur, 30);
 		}
 #endif
 
