@@ -1,6 +1,6 @@
 #define SHOW_UI true;
 //#define FROM_WEBCAM true
-#define FROM_FILE "Calibration Videos/PAC 1.mp4"
+#define FROM_FILE "Calibration Videos/Pit 1.mp4"
 #define PRINT_TIME true;
 
 #include <chrono>
@@ -70,7 +70,7 @@ void PreProcessImage(const Mat& sourceImage, Mat& targetImage, Parameters parame
 
 #ifdef SHOW_UI
 	guiWindow.AddImage(middleMask, 0, 0, "W Mask");
-	guiWindow.AddImage(highlightMask, 1, 0, "N Mask");
+	guiWindow.AddImage(highlightMask, 1, 0, "H Mask");
 	guiWindow.AddImage(lowLightMask, 2, 0, "L Mask");
 
 	guiWindow.AddImage(masksMerged, 0, 1, "Masks Merged");
@@ -292,6 +292,13 @@ int main() {
 
 #if defined(FROM_WEBCAM)
 		ReadFromCameraOrRedIfError(videoCaptures, parameters, image);
+
+		//videoCaptures[0].read(image);
+
+		//if (image.rows == 0) {
+		//	image = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
+		//}
+
 #elif defined(FROM_FILE)
 		image = frames[currentFrameIndex].clone();
 #endif

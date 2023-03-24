@@ -11,29 +11,29 @@ class Parameters {
 
 	public:
 
-		int CameraId = 0;
-		int WindowWidth = 1912;// 2039;
+		int CameraId = 1;
+		int WindowWidth = 2039;// 1912;
 		int WindowHeight = 1080;// 1009;
 
-		int MiddleHueMin = 8;
-		int MiddleHueMax = 30;
-		int MiddleSaturationMin = 150;
+		int MiddleHueMin = 25;
+		int MiddleHueMax = 35;
+		int MiddleSaturationMin = 21;
 		int MiddleSaturationMax = 255;
-		int MiddleValueMin = 130;
+		int MiddleValueMin = 190;
 		int MiddleValueMax = 255;
 		int MiddleMaskWeight = 100;
 
-		int HighlightHueMin = 4;
-		int HighlightHueMax = 30;
-		int HighlightSaturationMin = 40;
-		int HighlightSaturationMax = 255;
-		int HighlightValueMin = 240;
+		int HighlightHueMin = 0;
+		int HighlightHueMax = 170;
+		int HighlightSaturationMin = 0;
+		int HighlightSaturationMax = 46;
+		int HighlightValueMin = 210;
 		int HighlightValueMax = 255;
 		int HighlightMaskWeight = 100;
 
-		int LowLightHueMin = 3;
-		int LowLightHueMax = 31;
-		int LowLightSaturationMin = 255;
+		int LowLightHueMin = 4;
+		int LowLightHueMax = 35;
+		int LowLightSaturationMin = 130;
 		int LowLightSaturationMax = 255;
 		int LowLightValueMin = 104;
 		int LowLightValueMax = 255;
@@ -62,7 +62,7 @@ class Parameters {
 
 			namedWindow("General", WINDOW_NORMAL);
 			namedWindow("Wide Mask", WINDOW_NORMAL);
-			namedWindow("Narrow Mask", WINDOW_NORMAL);
+			namedWindow("Highlight Mask", WINDOW_NORMAL);
 			namedWindow("Low Light Mask", WINDOW_NORMAL);
 
 			createTrackbar("CameraId", "General", &CameraId, 3);
@@ -78,13 +78,13 @@ class Parameters {
 			createTrackbar("M V Max", "Wide Mask", &MiddleValueMax, 255);
 			createTrackbar("M Weight", "Wide Mask", &MiddleMaskWeight, 100);
 
-			createTrackbar("H H Min", "Narrow Mask", &HighlightHueMin, 179);
-			createTrackbar("H H Max", "Narrow Mask", &HighlightHueMax, 179);
-			createTrackbar("H S Min", "Narrow Mask", &HighlightSaturationMin, 255);
-			createTrackbar("H S Max", "Narrow Mask", &HighlightSaturationMax, 255);
-			createTrackbar("H V Min", "Narrow Mask", &HighlightValueMin, 255);
-			createTrackbar("H V Max", "Narrow Mask", &HighlightValueMax, 255);
-			createTrackbar("H Weight", "Narrow Mask", &HighlightMaskWeight, 100);
+			createTrackbar("H H Min", "Highlight Mask", &HighlightHueMin, 179);
+			createTrackbar("H H Max", "Highlight Mask", &HighlightHueMax, 179);
+			createTrackbar("H S Min", "Highlight Mask", &HighlightSaturationMin, 255);
+			createTrackbar("H S Max", "Highlight Mask", &HighlightSaturationMax, 255);
+			createTrackbar("H V Min", "Highlight Mask", &HighlightValueMin, 255);
+			createTrackbar("H V Max", "Highlight Mask", &HighlightValueMax, 255);
+			createTrackbar("H Weight", "Highlight Mask", &HighlightMaskWeight, 100);
 
 			createTrackbar("L H Min", "Low Light Mask", &LowLightHueMin, 179);
 			createTrackbar("L H Max", "Low Light Mask", &LowLightHueMax, 179);
