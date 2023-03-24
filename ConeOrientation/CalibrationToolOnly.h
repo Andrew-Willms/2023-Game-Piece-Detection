@@ -51,6 +51,8 @@ inline vector<VideoCapture> CreateWebCamVideoCaptures() {
 	for (int i = 0; i < 4; i++) {
 		videoCaptures.emplace_back(i);
 	}
+
+	return videoCaptures;
 }
 #endif
 
@@ -76,7 +78,8 @@ inline vector<Mat> ReadAllFrames() {
 #ifdef FROM_WEBCAM
 inline void ReadFromCameraOrRedIfError(vector<VideoCapture>& videoCaptures, const Parameters parameters, Mat& targetImage) {
 
-	videoCaptures[parameters.CameraId].read(targetImage);
+	//videoCaptures[parameters.CameraId].read(targetImage);
+	videoCaptures[0].read(targetImage);
 
 	if (targetImage.rows == 0) {
 		targetImage = Mat(parameters.CameraResolution.y, parameters.CameraResolution.x, CV_8UC3, RED);
